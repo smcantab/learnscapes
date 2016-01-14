@@ -1,0 +1,7 @@
+numpy
+scipy
+matplotlib
+pyro4
+pele
+tensorflow
+numpydoc
