@@ -2,15 +2,17 @@ from __future__ import division
 import numpy as np
 import cmath
 from numba import jit
-from itertools import permutations, combinations
+import tensorflow as tf
 
-from pele.potentials import MeanFieldPSpinSpherical
+from learnscapes.pspinspherical import MeanFieldPSpinSphericalTF
 from pele.systems import BaseSystem
+from pele.systems.basesystem import dict_copy_update
+from pele.optimize import lbfgs_cpp
 from pele.landscape import smooth_path
-from scipy.misc import factorial
 from pele.transition_states._zeroev import orthogonalize
 from pele.takestep.generic import TakestepSlice
 from pele.storage import Database
+
 
 def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
     """
@@ -48,6 +50,7 @@ def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
     else:
         raise ValueError('method must be one of:'
                          ' "asymmetric", "strong", "weak", "average"')
+
 @jit
 def compare_exact(x1, x2,
                   rel_tol=1e-9,
@@ -57,9 +60,9 @@ def compare_exact(x1, x2,
                   debug=False):
     N = x1.size
     if debug:
-        assert x1.size == x2.size
-        assert isClose(np.dot(x1,x1), N)
-        assert isClose(np.dot(x2,x2), N)
+        assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
+        assert isClose(np.dot(x1,x1), N), "|x1|^2 = {} != {}".format(np.dot(x1,x1), N)
+        assert isClose(np.dot(x2,x2), N), "|x2|^2 = {} != {}".format(np.dot(x2,x2), N)
     dot = np.dot(x1, x2)
     if even:
         same =(isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method) or
@@ -67,14 +70,18 @@ def compare_exact(x1, x2,
     else:
         same = isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method)
     return same
+
+
 @jit
 def normalize_spins(x):
-    x /= (np.linalg.norm(x)/np.sqrt(len(x)))
+    x /= (np.linalg.norm(x)/np.sqrt(x.size))
     return x
+
 
 @jit
 def dist(x1, x2):
     return np.linalg.norm(x1 - x2)
+
 
 @jit
 def mindist_even(x1, x2):
@@ -98,8 +105,9 @@ def spin_mindist_1d(x1, x2, even=False):
     else:
         return mindist_odd(x1, x2)
 
+
 class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
-    
+
     def __init__(self, nspins, stepsize=0.5):
         TakestepSlice.__init__(self, stepsize=stepsize)
         self.nspins = nspins
@@ -108,6 +116,7 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
         assert len(coords) == self.nspins
         coords[self.srange] += np.random.uniform(low=-self.stepsize, high=self.stepsize, size=coords[self.srange].shape)
         coords[self.srange] /= np.linalg.norm(coords[self.srange])/np.sqrt(self.nspins)
+
 
 class MeanFieldPSpinSphericalSystem(BaseSystem):
     def __init__(self, nspins, p=3, interactions=None):
@@ -118,7 +127,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
             self.interactions = np.array(interactions)
         else:
             self.interactions = self.get_interactions(self.nspins, self.p)
-        self.pot = self.get_potential()
+        self.pot = self.get_potential(dtype='float64')
         self.setup_params(self.params)
 
     def setup_params(self, params):
@@ -131,7 +140,12 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         nebparams.adaptive_niter = True
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
-        params.structural_quench_params.tol = 1e-6
+        params.structural_quench_params.tol = 1e-5
+        params.structural_quench_params.maxstep = self.nspins
+        params.structural_quench_params.M = 4
+        params.structural_quench_params.iprint=10
+        params.structural_quench_params.verbosity=0
+
         params.database.overwrite_properties = False
         
         params.basinhopping.insert_rejected = True
@@ -139,7 +153,6 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         
         tsparams = params.double_ended_connect.local_connect_params.tsSearchParams
         tsparams.hessian_diagonalization = False
-
 
     def get_system_properties(self):
         return dict(potential="PSpinSPherical_model",
@@ -149,18 +162,33 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
                     )
 
     def get_interactions(self, nspins, p):
-        interactions = np.zeros([nspins for i in xrange(p)])
-        for comb in combinations(range(nspins), p):
-                w = np.random.normal(0, np.sqrt(factorial(p)))
-                for perm in permutations(comb):
-                    interactions[perm] = w
-        return interactions.flatten()
+        norm = tf.random_normal([nspins for _ in xrange(p)], mean=0, stddev=1.0, dtype='float32')
+        interactions = norm.eval(session=tf.Session())
+        return interactions
 
-    def get_potential(self, tol=1e-6):
+    def get_minimizer(self, **kwargs):
+        """return a function to minimize the structure
+
+        Notes
+        The function should be one of the optimizers in `pele.optimize`, or
+        have similar structure.
+
+        See Also
+        --------
+        pele.optimize
+        """
+        def event_normalize_spins(**kwargs):
+             kwargs["coords"] = normalize_spins(kwargs["coords"])
+        pot = self.get_potential()
+        kwargs = dict_copy_update(self.params["structural_quench_params"], kwargs)
+        kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
+        return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
+
+    def get_potential(self, dtype='float32'):
         try:
             return self.pot
         except AttributeError:
-            self.pot = MeanFieldPSpinSpherical(self.interactions, self.nspins, self.p, tol=tol)
+            self.pot = MeanFieldPSpinSphericalTF(self.interactions, self.nspins, self.p, dtype=dtype)
             return self.pot
 
     def _orthog_to_zero(self, v, coords):
@@ -168,7 +196,6 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         return orthogonalize(v, zerov)
 #
     def get_orthogonalize_to_zero_eigenvectors(self):
-        #return None
         return self._orthog_to_zero
     
     def get_metric_tensor(self, coords):
@@ -189,7 +216,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         are they the same minima?
         """
         even = self.p % 2 == 0
-        return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-7, abs_tol=0.0,
+        return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-4, abs_tol=0.0,
                                              method='weak', even=even, debug=True)
 
     def smooth_path(self, path, **kwargs):
@@ -252,17 +279,15 @@ def run_gui_db(dbname="pspin_spherical_p3_N20.sqlite"):
 
 
 if __name__ == "__main__":
-    p = 5
-    N = 20
+    p = 3
+    N = 100
     #run_gui(N, p)
 
-    #event_after_step = lambda energy, coords, acceptstep : normalize_spins(coords)
-    #event_after_step=[event_after_step]
-    if False:
+    if True:
         system = MeanFieldPSpinSphericalSystem(N, p=p)
         db = system.create_database("pspin_spherical_p{}_N{}.sqlite".format(p,N))
         bh = system.get_basinhopping(database=db, outstream=None)
-        bh.run(100)
+        bh.run(3)
 
     if True:
         run_gui_db(dbname="pspin_spherical_p{}_N{}.sqlite".format(p,N))

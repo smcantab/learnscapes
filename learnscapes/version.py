@@ -1,0 +1,3 @@
+
+# THIS FILE IS GENERATED FROM SCIPY SETUP.PY
+git_revision = 'b1eaacdce2f03a62b5c927c20cdc1afdd5c2025d'
