@@ -63,7 +63,7 @@ setup(name='learnscapes',
                 "learnscapes.pspinspherical",
                 "learnscapes.NN",
                 ],
-      ext_modules=ext_modules,
+      # ext_modules=ext_modules,
       # data files needed for the tests
       # data_files=[('pele/potentials/tests', list(glob.glob('pele/potentials/tests/*.xyz'))),
       #            ]
