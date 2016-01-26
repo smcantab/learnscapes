@@ -23,27 +23,29 @@ class BaseMeanFieldPSpinSphericalTF(BasePotential):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, interactions, nspins, p, dtype='float32'):
+    def __init__(self, interactions, nspins, p, dtype='float32', device='cpu'):
         self.dtype = dtype
         self.p = p
         self.nspins = nspins
         prf = np.power(self.nspins, (self.p-1.)/2.) if self.p > 2 else 1.
         prf *= nspins #normalize wrt to system size to get comparable values, see http://arxiv.org/pdf/1412.6615v4.pdf
         self.sqrtN = np.sqrt(self.nspins)
+        self.device = device
         # the following scheme needs to be followed to avoid repeated addition of ops to
         # the graph
         self.g = tf.Graph()
         with self.g.as_default():
-            self.prf = tf.constant(prf, dtype=self.dtype, name='pot_prf')
-            self.interactions = tf.constant(interactions, dtype=self.dtype, name='pot_interactions')
-            self.x = tf.Variable(tf.zeros([self.nspins], dtype=self.dtype), name='x')
-            #declaring loss like this makes sure that the full graph is initialised
-            self.gloss= self.loss
-            self.gcompute_gradient = self.compute_gradient
-            self.session = tf.Session()
-            init = tf.initialize_all_variables()
-            self.session.run(init)
-            self.g.finalize() # this guarantees that no new ops are added to the graph
+            with self.g.device(select_device(dev=self.device)):
+                self.prf = tf.constant(prf, dtype=self.dtype, name='pot_prf')
+                self.interactions = tf.constant(interactions, dtype=self.dtype, name='pot_interactions')
+                self.x = tf.Variable(tf.zeros([self.nspins], dtype=self.dtype), name='x')
+                #declaring loss like this makes sure that the full graph is initialised
+                self.gloss= self.loss
+                self.gcompute_gradient = self.compute_gradient
+                self.session = tf.Session()
+                init = tf.initialize_all_variables()
+                self.session.run(init)
+                self.g.finalize() # this guarantees that no new ops are added to the graph
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.session.close()
@@ -75,16 +77,18 @@ class BaseMeanFieldPSpinSphericalTF(BasePotential):
     def getEnergy(self, coords):
         self._normalizeSpins(coords)
         with self.g.as_default():
-            with self.session.as_default():
-                e = self.session.run(self.gloss, feed_dict={self.x : coords})
+            with self.g.device(select_device(dev=self.device)):
+                with self.session.as_default():
+                    e = self.session.run(self.gloss, feed_dict={self.x : coords})
         return e
 
     def getEnergyGradient(self, coords):
         self._normalizeSpins(coords)
         with self.g.as_default():
-            with self.session.as_default():
-                e, grad = self.session.run([self.gloss, self.gcompute_gradient],
-                                               feed_dict={self.x : coords})
+            with self.g.device(select_device(dev=self.device)):
+                with self.session.as_default():
+                    e, grad = self.session.run([self.gloss, self.gcompute_gradient],
+                                                   feed_dict={self.x : coords})
         return e, grad
 
 class MeanField3SpinSphericalTF(BaseMeanFieldPSpinSphericalTF):
@@ -131,7 +135,7 @@ if __name__ == "__main__":
             return [results.coords, results.energy, results.nfev]
 
     dtype = 'float32'
-    n=50
+    n=20
     p=3
     norm = tf.random_normal([n for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)
     interactions = norm.eval(session=tf.Session())
@@ -153,10 +157,10 @@ if __name__ == "__main__":
     #     start = time.time()
     #     e, grad = potTF.getEnergyGradient(coords)
     #     print time.time() - start
-    # print timeit.timeit('e, grad = potTF.getEnergyGradient(coords)', "from __main__ import potTF, coords", number=1000)
+    print timeit.timeit('e, grad = potTF.getEnergyGradient(coords)', "from __main__ import potTF, coords", number=1000)
 
     # minimize(potPL, coords)
     # print minimize(potTF, coords)
     #
     # print timeit.timeit('minimize(potPL, coords)', "from __main__ import potPL, coords, minimize", number=1)
-    print timeit.timeit('minimize(potTF, coords)', "from __main__ import potTF, coords, minimize", number=10)
+    # print timeit.timeit('minimize(potTF, coords)', "from __main__ import potTF, coords, minimize", number=10)
