@@ -143,8 +143,8 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         params.structural_quench_params.tol = 1e-5
         params.structural_quench_params.maxstep = self.nspins
         params.structural_quench_params.M = 4
-        params.structural_quench_params.iprint=10
-        params.structural_quench_params.verbosity=0
+        params.structural_quench_params.iprint=1
+        params.structural_quench_params.verbosity=5
 
         params.database.overwrite_properties = False
         
@@ -280,14 +280,14 @@ def run_gui_db(dbname="pspin_spherical_p3_N20.sqlite"):
 
 if __name__ == "__main__":
     p = 3
-    N = 100
+    N = 20
     #run_gui(N, p)
 
     if True:
         system = MeanFieldPSpinSphericalSystem(N, p=p)
         db = system.create_database("pspin_spherical_p{}_N{}.sqlite".format(p,N))
         bh = system.get_basinhopping(database=db, outstream=None)
-        bh.run(3)
+        bh.run(20)
 
     if True:
         run_gui_db(dbname="pspin_spherical_p{}_N{}.sqlite".format(p,N))
