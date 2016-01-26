@@ -4,19 +4,21 @@ import tensorflow as tf
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
 from learnscapes.utils import tfRnorm, tfOrthog, select_device_simple
+from learnscapes.pspinspherical import GradientDescent
 
 #this is the underlying graph
 
 
-def MeanFieldPSpinGraph(interactions, nspins, p, dtype='float32', graph=tf.Graph()):
+def MeanFieldPSpinGraph(interactions, nspins, p, dtype='float32'):
     if p == 3:
-        return MeanField3SpinGraph(interactions, nspins, dtype=dtype, graph=graph)
+        return MeanField3SpinGraph(interactions, nspins, dtype=dtype)
     elif p == 4:
-        return MeanField4SpinGraph(interactions, nspins, dtype=dtype, graph=graph)
+        return MeanField4SpinGraph(interactions, nspins, dtype=dtype)
     elif p == 5:
-        return MeanField5SpinGraph(interactions, nspins, dtype=dtype, graph=graph)
+        return MeanField5SpinGraph(interactions, nspins, dtype=dtype)
     else:
         raise Exception("MeanFieldPSpinGraph: p={} not implemented".format(p))
+
 
 class BasePSpinGraph(object):
     """
@@ -24,24 +26,33 @@ class BasePSpinGraph(object):
     this should not have its own graph or its own section, it defines only the graph
     """
 
-    def __init__(self, interactions, nspins, p, dtype='float32', graph=tf.Graph()):
-        self.g = graph
+    def __init__(self, interactions, nspins, p, dtype='float32'):
         self.dtype = dtype
         self.p = p
         self.nspins = nspins
+        self.pyinteractions = interactions
+        # normalize wrt to system size to get comparable values,
+        # see http://arxiv.org/pdf/1412.6615v4.pdf
         prf = np.power(self.nspins, (self.p-1.)/2.) if self.p > 2 else 1.
-        prf *= nspins # normalize wrt to system size to get comparable values, see http://arxiv.org/pdf/1412.6615v4.pdf
-        # the following scheme needs to be followed to avoid repeated addition of ops to
-        # the graph
+        self.pyprf = prf * nspins
+
+    def __call__(self, graph=tf.Graph()):
+        """
+        the following scheme needs to be followed to avoid repeated addition of ops to the graph
+        :param graph:
+        :return:
+        """
+        self.g = graph
         with self.g.name_scope('embedding'):
-            self.prf = tf.constant(prf, dtype=self.dtype, name='pot_prf')
-            self.interactions = tf.constant(interactions, dtype=self.dtype, name='pot_interactions')
+            self.prf = tf.constant(self.pyprf, dtype=self.dtype, name='pot_prf')
+            self.interactions = tf.constant(self.pyinteractions, dtype=self.dtype, name='pot_interactions')
             self.x = tf.Variable(tf.zeros([self.nspins], dtype=self.dtype), name='x')
         # declaring loss like this makes sure that the full graph is initialised
         with self.g.name_scope('loss'):
             self.gloss= self.loss
         with self.g.name_scope('gradient'):
             self.gcompute_gradient = self.compute_gradient
+        return self
 
     @property
     def lossTensorPartial(self):
@@ -65,8 +76,8 @@ class BasePSpinGraph(object):
 
 
 class MeanField3SpinGraph(BasePSpinGraph):
-    def __init__(self, interactions, nspins, dtype='float32', graph=tf.Graph()):
-        super(MeanField3SpinGraph, self).__init__(interactions, nspins, 3, dtype=dtype, graph=graph)
+    def __init__(self, interactions, nspins, dtype='float32'):
+        super(MeanField3SpinGraph, self).__init__(interactions, nspins, 3, dtype=dtype)
 
     @property
     def lossTensor(self):
@@ -75,8 +86,8 @@ class MeanField3SpinGraph(BasePSpinGraph):
 
 
 class MeanField4SpinGraph(BasePSpinGraph):
-    def __init__(self, interactions, nspins, dtype='float32', graph=tf.Graph()):
-        super(MeanField4SpinGraph, self).__init__(interactions, nspins, 4, dtype=dtype, graph=graph)
+    def __init__(self, interactions, nspins, dtype='float32'):
+        super(MeanField4SpinGraph, self).__init__(interactions, nspins, 4, dtype=dtype)
 
     @property
     def lossTensor(self):
@@ -86,8 +97,8 @@ class MeanField4SpinGraph(BasePSpinGraph):
 
 
 class MeanField5SpinGraph(BasePSpinGraph):
-    def __init__(self, interactions, nspins, dtype='float32', graph=tf.Graph()):
-        super(MeanField5SpinGraph, self).__init__(interactions, nspins, 5, dtype=dtype, graph=graph)
+    def __init__(self, interactions, nspins, dtype='float32'):
+        super(MeanField5SpinGraph, self).__init__(interactions, nspins, 5, dtype=dtype)
 
     @property
     def lossTensor(self):
@@ -108,13 +119,15 @@ class MeanFieldPSpinSphericalTF(BasePotential):
         # the graph
         self.g = tf.Graph()
         with self.g.as_default(), self.g.device(self.device):
-            self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype, graph=self.g)
-            init = tf.initialize_all_variables()
             self.session = tf.Session(config=tf.ConfigProto(
                     allow_soft_placement=True,
                     log_device_placement=False))
-            self.session.run(init)
-            self.g.finalize()   # this guarantees that no new ops are added to the graph
+            with self.session.as_default():
+                self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype)(graph=self.g)
+                print self.model.g
+                init = tf.initialize_all_variables()
+                self.session.run(init)
+                self.g.finalize()   # this guarantees that no new ops are added to the graph
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.session.close()
@@ -152,26 +165,29 @@ if __name__ == "__main__":
 
     dtype = 'float32'
     n=20
-    p=5
+    p=3
     norm = tf.random_normal([n for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)
     interactions = norm.eval(session=tf.Session())
 
     coords = np.random.normal(size=n)
     coords /= np.linalg.norm(coords) / np.sqrt(coords.size)
-    potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='gpu')
 
-    e, grad = potTF.getEnergyGradient(coords)
-    print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
+    # potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='gpu')
+    #
+    # e, grad = potTF.getEnergyGradient(coords)
+    # print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
 
-    # gd = GradientDescent(potTF, learning_rate=1, iprint=1)
-    # gd.run(coords)
-    # print gd.get_results()
 
-    import time
-    for _ in xrange(2000):
-        start = time.time()
-        e, grad = potTF.getEnergyGradient(coords)
-        print time.time() - start
+    model = MeanFieldPSpinGraph(interactions, n, p, dtype=dtype)
+    gd = GradientDescent(model, learning_rate=1, iprint=1, device='cpu')
+    gd.run(coords)
+    print gd.get_results()
+
+    # import time
+    # for _ in xrange(2000):
+    #     start = time.time()
+    #     e, grad = potTF.getEnergyGradient(coords)
+    #     print time.time() - start
     # print timeit.timeit('e, grad = potTF.getEnergyGradient(coords)', "from __main__ import potTF, coords", number=10)
 
     # print minimize(potTF, coords)
