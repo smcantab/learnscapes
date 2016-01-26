@@ -1,56 +1,47 @@
 from __future__ import division
 import numpy as np
-import abc
 import tensorflow as tf
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
-from learnscapes.utils import tfDot, tfNorm, tfRnorm, tfOrthog, Nnorm, select_device_simple
-from learnscapes.pspinspherical import GradientDescent
+from learnscapes.utils import tfRnorm, tfOrthog, select_device_simple
 
-def MeanFieldPSpinSphericalTF(interactions, nspins, p, dtype='float32'):
+#this is the underlying graph
+
+
+def MeanFieldPSpinGraph(interactions, nspins, p, dtype='float32', graph=tf.Graph()):
     if p == 3:
-        return MeanField3SpinSphericalTF(interactions, nspins, dtype=dtype)
+        return MeanField3SpinGraph(interactions, nspins, dtype=dtype, graph=graph)
     elif p == 4:
-        return MeanField4SpinSphericalTF(interactions, nspins, dtype=dtype)
+        return MeanField4SpinGraph(interactions, nspins, dtype=dtype, graph=graph)
     elif p == 5:
-        return MeanField5SpinSphericalTF(interactions, nspins, dtype=dtype)
+        return MeanField5SpinGraph(interactions, nspins, dtype=dtype, graph=graph)
     else:
-        raise Exception("BaseMeanFieldPSpinSphericalTF: p={} not implemented".format(p))
+        raise Exception("MeanFieldPSpinGraph: p={} not implemented".format(p))
 
-
-class BaseMeanFieldPSpinSphericalTF(BasePotential):
+class BasePSpinGraph(object):
     """
-    the potential has been hardcoded for p=3
+    the only missing function is normalize gradient that is not implemented as part of the graph
+    this should not have its own graph or its own section, it defines only the graph
     """
-    __metaclass__ = abc.ABCMeta
 
-    def __init__(self, interactions, nspins, p, dtype='float32', device='gpu'):
+    def __init__(self, interactions, nspins, p, dtype='float32', graph=tf.Graph()):
+        self.g = graph
         self.dtype = dtype
         self.p = p
         self.nspins = nspins
         prf = np.power(self.nspins, (self.p-1.)/2.) if self.p > 2 else 1.
-        prf *= nspins #normalize wrt to system size to get comparable values, see http://arxiv.org/pdf/1412.6615v4.pdf
-        self.sqrtN = np.sqrt(self.nspins)
-        self.device = select_device_simple(dev=device)
+        prf *= nspins # normalize wrt to system size to get comparable values, see http://arxiv.org/pdf/1412.6615v4.pdf
         # the following scheme needs to be followed to avoid repeated addition of ops to
         # the graph
-        self.g = tf.Graph()
-        with self.g.as_default(), self.g.device(self.device):
+        with self.g.name_scope('embedding'):
             self.prf = tf.constant(prf, dtype=self.dtype, name='pot_prf')
             self.interactions = tf.constant(interactions, dtype=self.dtype, name='pot_interactions')
             self.x = tf.Variable(tf.zeros([self.nspins], dtype=self.dtype), name='x')
-            #declaring loss like this makes sure that the full graph is initialised
+        # declaring loss like this makes sure that the full graph is initialised
+        with self.g.name_scope('loss'):
             self.gloss= self.loss
+        with self.g.name_scope('gradient'):
             self.gcompute_gradient = self.compute_gradient
-            init = tf.initialize_all_variables()
-            self.session = tf.Session(config=tf.ConfigProto(
-                    allow_soft_placement=True,
-                    log_device_placement=True))
-            self.session.run(init)
-            self.g.finalize()   # this guarantees that no new ops are added to the graph
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.session.close()
 
     @property
     def lossTensorPartial(self):
@@ -58,7 +49,6 @@ class BaseMeanFieldPSpinSphericalTF(BasePotential):
         return tf.mul(tf.reshape(self.x, [self.nspins]), tf.reshape(self.x, [self.nspins,1]))
 
     @property
-    @abc.abstractmethod
     def lossTensor(self):
         """this gives the full loss tensor generator"""
 
@@ -73,36 +63,20 @@ class BaseMeanFieldPSpinSphericalTF(BasePotential):
         grad = tfOrthog(grad, tf.mul(self.x, tfRnorm(self.x)))
         return grad
 
-    def _normalizeSpins(self, coords):
-        coords /= (np.linalg.norm(coords)/self.sqrtN)
 
-    def getEnergy(self, coords):
-        self._normalizeSpins(coords)
-        with self.g.as_default(), self.g.device(self.device):
-            with self.session.as_default():
-                e = self.session.run(self.gloss, feed_dict={self.x : coords})
-        return e
-
-    def getEnergyGradient(self, coords):
-        self._normalizeSpins(coords)
-        with self.g.as_default(), self.g.device(self.device):
-            with self.session.as_default():
-                e, grad = self.session.run([self.gloss, self.gcompute_gradient],
-                                           feed_dict={self.x : coords})
-        return e, grad
-
-class MeanField3SpinSphericalTF(BaseMeanFieldPSpinSphericalTF):
-    def __init__(self, interactions, nspins, dtype='float32'):
-        super(MeanField3SpinSphericalTF, self).__init__(interactions, nspins, p=3, dtype=dtype)
+class MeanField3SpinGraph(BasePSpinGraph):
+    def __init__(self, interactions, nspins, dtype='float32', graph=tf.Graph()):
+        super(MeanField3SpinGraph, self).__init__(interactions, nspins, 3, dtype=dtype, graph=graph)
 
     @property
     def lossTensor(self):
         """this gives the full loss tensor generator"""
         return tf.mul(self.lossTensorPartial, tf.reshape(self.x, [self.nspins,1,1]))
 
-class MeanField4SpinSphericalTF(BaseMeanFieldPSpinSphericalTF):
-    def __init__(self, interactions, nspins, dtype='float32'):
-        super(MeanField4SpinSphericalTF, self).__init__(interactions, nspins, p=4, dtype=dtype)
+
+class MeanField4SpinGraph(BasePSpinGraph):
+    def __init__(self, interactions, nspins, dtype='float32', graph=tf.Graph()):
+        super(MeanField4SpinGraph, self).__init__(interactions, nspins, 4, dtype=dtype, graph=graph)
 
     @property
     def lossTensor(self):
@@ -110,9 +84,10 @@ class MeanField4SpinSphericalTF(BaseMeanFieldPSpinSphericalTF):
         return tf.mul(tf.mul(self.lossTensorPartial, tf.reshape(self.x, [self.nspins,1,1])),
                       tf.reshape(self.x, [self.nspins,1,1,1]))
 
-class MeanField5SpinSphericalTF(BaseMeanFieldPSpinSphericalTF):
-    def __init__(self, interactions, nspins, dtype='float32'):
-        super(MeanField5SpinSphericalTF, self).__init__(interactions, nspins, p=5, dtype=dtype)
+
+class MeanField5SpinGraph(BasePSpinGraph):
+    def __init__(self, interactions, nspins, dtype='float32', graph=tf.Graph()):
+        super(MeanField5SpinGraph, self).__init__(interactions, nspins, 5, dtype=dtype, graph=graph)
 
     @property
     def lossTensor(self):
@@ -120,6 +95,47 @@ class MeanField5SpinSphericalTF(BaseMeanFieldPSpinSphericalTF):
         return tf.mul(tf.mul(tf.mul(self.lossTensorPartial, tf.reshape(self.x, [self.nspins,1,1])),
                              tf.reshape(self.x, [self.nspins,1,1,1])),
                       tf.reshape(self.x, [self.nspins,1,1,1,1]))
+
+
+class MeanFieldPSpinSphericalTF(BasePotential):
+    """
+    the potential has been hardcoded for p=3
+    """
+    def __init__(self, interactions, nspins, p, dtype='float32', device='gpu'):
+        self.sqrtN = np.sqrt(nspins)
+        self.device = select_device_simple(dev=device)
+        # the following scheme needs to be followed to avoid repeated addition of ops to
+        # the graph
+        self.g = tf.Graph()
+        with self.g.as_default(), self.g.device(self.device):
+            self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype, graph=self.g)
+            init = tf.initialize_all_variables()
+            self.session = tf.Session(config=tf.ConfigProto(
+                    allow_soft_placement=True,
+                    log_device_placement=False))
+            self.session.run(init)
+            self.g.finalize()   # this guarantees that no new ops are added to the graph
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.session.close()
+
+    def _normalizeSpins(self, coords):
+        coords /= (np.linalg.norm(coords)/self.sqrtN)
+
+    def getEnergy(self, coords):
+        self._normalizeSpins(coords)
+        with self.g.as_default(), self.g.device(self.device):
+            with self.session.as_default():
+                e = self.session.run(self.model.gloss, feed_dict={self.model.x: coords})
+        return e
+
+    def getEnergyGradient(self, coords):
+        self._normalizeSpins(coords)
+        with self.g.as_default(), self.g.device(self.device):
+            with self.session.as_default():
+                e, grad = self.session.run([self.model.gloss, self.model.gcompute_gradient],
+                                           feed_dict={self.model.x: coords})
+        return e, grad
 
 if __name__ == "__main__":
     import timeit
@@ -135,14 +151,14 @@ if __name__ == "__main__":
             return [results.coords, results.energy, results.nfev]
 
     dtype = 'float32'
-    n=300
-    p=3
+    n=20
+    p=5
     norm = tf.random_normal([n for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)
     interactions = norm.eval(session=tf.Session())
 
     coords = np.random.normal(size=n)
     coords /= np.linalg.norm(coords) / np.sqrt(coords.size)
-    potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype)
+    potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='gpu')
 
     e, grad = potTF.getEnergyGradient(coords)
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
@@ -151,16 +167,13 @@ if __name__ == "__main__":
     # gd.run(coords)
     # print gd.get_results()
 
-    # print timeit.timeit('e, grad = potPL.getEnergyGradient(coords)', "from __main__ import potPL, coords", number=10)
-    # import time
-    # for _ in xrange(2000):
-    #     start = time.time()
-    #     e, grad = potTF.getEnergyGradient(coords)
-    #     print time.time() - start
-    print timeit.timeit('e, grad = potTF.getEnergyGradient(coords)', "from __main__ import potTF, coords", number=10)
+    import time
+    for _ in xrange(2000):
+        start = time.time()
+        e, grad = potTF.getEnergyGradient(coords)
+        print time.time() - start
+    # print timeit.timeit('e, grad = potTF.getEnergyGradient(coords)', "from __main__ import potTF, coords", number=10)
 
-    # minimize(potPL, coords)
     # print minimize(potTF, coords)
     #
-    # print timeit.timeit('minimize(potPL, coords)', "from __main__ import potPL, coords, minimize", number=1)
     # print timeit.timeit('minimize(potTF, coords)', "from __main__ import potTF, coords, minimize", number=10)
