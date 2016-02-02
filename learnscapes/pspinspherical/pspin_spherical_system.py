@@ -280,10 +280,10 @@ def run_gui_db(dbname="pspin_spherical_p3_N20.sqlite"):
 
 if __name__ == "__main__":
     p = 3
-    N = 20
+    N = 100
     #run_gui(N, p)
 
-    if True:
+    if False:
         system = MeanFieldPSpinSphericalSystem(N, p=p)
         db = system.create_database("pspin_spherical_p{}_N{}.sqlite".format(p,N))
         bh = system.get_basinhopping(database=db, outstream=None)

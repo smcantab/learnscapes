@@ -112,7 +112,7 @@ class MeanFieldPSpinSphericalTF(BasePotential):
     """
     the potential has been hardcoded for p=3
     """
-    def __init__(self, interactions, nspins, p, dtype='float32', device='gpu'):
+    def __init__(self, interactions, nspins, p, dtype='float32', device='cpu'):
         self.sqrtN = np.sqrt(nspins)
         self.device = select_device_simple(dev=device)
         # the following scheme needs to be followed to avoid repeated addition of ops to
@@ -124,7 +124,6 @@ class MeanFieldPSpinSphericalTF(BasePotential):
                     log_device_placement=False))
             with self.session.as_default():
                 self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype)(graph=self.g)
-                print self.model.g
                 init = tf.initialize_all_variables()
                 self.session.run(init)
                 self.g.finalize()   # this guarantees that no new ops are added to the graph
@@ -164,7 +163,7 @@ if __name__ == "__main__":
             return [results.coords, results.energy, results.nfev]
 
     dtype = 'float32'
-    n=20
+    n=100
     p=3
     norm = tf.random_normal([n for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)
     interactions = norm.eval(session=tf.Session())
@@ -172,16 +171,16 @@ if __name__ == "__main__":
     coords = np.random.normal(size=n)
     coords /= np.linalg.norm(coords) / np.sqrt(coords.size)
 
-    # potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='gpu')
-    #
-    # e, grad = potTF.getEnergyGradient(coords)
-    # print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
+    potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='gpu')
+
+    e, grad = potTF.getEnergyGradient(coords)
+    print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
 
 
-    model = MeanFieldPSpinGraph(interactions, n, p, dtype=dtype)
-    gd = GradientDescent(model, learning_rate=1, iprint=1, device='cpu')
-    gd.run(coords)
-    print gd.get_results()
+    # model = MeanFieldPSpinGraph(interactions, n, p, dtype=dtype)
+    # gd = GradientDescent(model, learning_rate=1, iprint=1, device='cpu')
+    # gd.run(coords)
+    # print gd.get_results()
 
     # import time
     # for _ in xrange(2000):
