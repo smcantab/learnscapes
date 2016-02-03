@@ -119,15 +119,15 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
 
 class MeanFieldPSpinSphericalSystem(BaseSystem):
-    def __init__(self, nspins, p=3, interactions=None):
+    def __init__(self, nspins, p=3, interactions=None, dtype='float32', device='gpu'):
         BaseSystem.__init__(self)
         self.nspins = nspins
         self.p = p
         if interactions is not None:
             self.interactions = np.array(interactions)
         else:
-            self.interactions = self.get_interactions(self.nspins, self.p)
-        self.pot = self.get_potential(dtype='float32')
+            self.interactions = self.get_interactions(self.nspins, self.p, dtype)
+        self.pot = self.get_potential(dtype=dtype, device=device)
         self.setup_params(self.params)
 
     def setup_params(self, params):
@@ -161,8 +161,8 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
                     interactions=self.interactions,
                     )
 
-    def get_interactions(self, nspins, p):
-        norm = tf.random_normal([nspins for _ in xrange(p)], mean=0, stddev=1.0, dtype='float32')
+    def get_interactions(self, nspins, p, dtype):
+        norm = tf.random_normal([nspins for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)
         interactions = norm.eval(session=tf.Session())
         return interactions
 
@@ -184,11 +184,11 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
         return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
 
-    def get_potential(self, dtype='float32'):
+    def get_potential(self, dtype='float32', device=device):
         try:
             return self.pot
         except AttributeError:
-            self.pot = MeanFieldPSpinSphericalTF(self.interactions, self.nspins, self.p, dtype=dtype)
+            self.pot = MeanFieldPSpinSphericalTF(self.interactions, self.nspins, self.p, dtype=dtype, device=device)
             return self.pot
 
     def _orthog_to_zero(self, v, coords):

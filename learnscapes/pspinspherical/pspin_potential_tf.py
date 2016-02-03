@@ -112,7 +112,7 @@ class MeanFieldPSpinSphericalTF(BasePotential):
     """
     the potential has been hardcoded for p=3
     """
-    def __init__(self, interactions, nspins, p, dtype='float32', device='cpu'):
+    def __init__(self, interactions, nspins, p, dtype='float32', device='gpu'):
         self.sqrtN = np.sqrt(nspins)
         self.device = select_device_simple(dev=device)
         # the following scheme needs to be followed to avoid repeated addition of ops to
