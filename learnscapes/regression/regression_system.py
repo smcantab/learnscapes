@@ -2,17 +2,15 @@ from __future__ import division
 import numpy as np
 import cmath
 from numba import jit
-import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
 
-from learnscapes.pspinspherical import MeanFieldPSpinSphericalTF
 from pele.systems import BaseSystem
 from pele.systems.basesystem import dict_copy_update
 from pele.optimize import lbfgs_cpp
 from pele.landscape import smooth_path
-from pele.transition_states._zeroev import orthogonalize
 from pele.takestep.generic import TakestepSlice
 from pele.storage import Database
-
+from learnscapes.regression import RegressionPotential, LogisticRegressionGraph
 
 def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
     """
@@ -56,27 +54,14 @@ def compare_exact(x1, x2,
                   rel_tol=1e-9,
                   abs_tol=0.0,
                   method='weak',
-                  even=False,
                   debug=False):
     N = x1.size
     if debug:
         assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
-        assert isClose(np.dot(x1,x1), N), "|x1|^2 = {} != {}".format(np.dot(x1,x1), N)
-        assert isClose(np.dot(x2,x2), N), "|x2|^2 = {} != {}".format(np.dot(x2,x2), N)
     dot = np.dot(x1, x2)
-    if even:
-        same =(isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method) or
-               isClose(dot, -N, rel_tol=rel_tol, abs_tol=abs_tol, method=method))
-    else:
-        same = isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method)
+    same =(isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method) or
+           isClose(dot, -N, rel_tol=rel_tol, abs_tol=abs_tol, method=method))
     return same
-
-
-@jit
-def normalize_spins(x):
-    x /= (np.linalg.norm(x)/np.sqrt(x.size))
-    return x
-
 
 @jit
 def dist(x1, x2):
@@ -84,7 +69,7 @@ def dist(x1, x2):
 
 
 @jit
-def mindist_even(x1, x2):
+def mindist_1d(x1, x2):
     d1 = dist(x1, x2)
     d2 = dist(x1, -x2)
     if d1 < d2:
@@ -92,42 +77,28 @@ def mindist_even(x1, x2):
     else:
         return d2, x1, -x2
 
-@jit
-def mindist_odd(x1, x2):
-    return dist(x1, x2), x1, x2
-
-@jit
-def spin_mindist_1d(x1, x2, even=False):
-    x1 = normalize_spins(x1)
-    x2 = normalize_spins(x2)
-    if even:
-        return mindist_even(x1, x2)
-    else:
-        return mindist_odd(x1, x2)
-
-
 class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
-    def __init__(self, nspins, stepsize=0.5):
+    def __init__(self, ndim, stepsize=0.5):
         TakestepSlice.__init__(self, stepsize=stepsize)
-        self.nspins = nspins
+        self.ndim = ndim
 
     def takeStep(self, coords, **kwargs):
-        assert len(coords) == self.nspins
+        assert len(coords) == self.ndim
         coords[self.srange] += np.random.uniform(low=-self.stepsize, high=self.stepsize, size=coords[self.srange].shape)
-        coords[self.srange] /= np.linalg.norm(coords[self.srange])/np.sqrt(self.nspins)
 
 
-class MeanFieldPSpinSphericalSystem(BaseSystem):
-    def __init__(self, nspins, p=3, interactions=None):
+class RegressionSystem(BaseSystem):
+    def __init__(self, x_train_data, y_train_data, graph_type, reg=0.01, dtype='float32', device='cpu'):
         BaseSystem.__init__(self)
-        self.nspins = nspins
-        self.p = p
-        if interactions is not None:
-            self.interactions = np.array(interactions)
-        else:
-            self.interactions = self.get_interactions(self.nspins, self.p)
-        self.pot = self.get_potential(dtype='float32')
+        self.x_train_data = np.array(x_train_data)
+        self.y_train_data = np.array(y_train_data)
+        self.graph_type = graph_type
+        self.dtype = dtype
+        self.device = device
+        self.reg = reg
+        self.ndim = self.y_train_data.shape[1]*(self.x_train_data.shape[1]+1)
+        self.pot = self.get_potential(dtype=self.dtype, device=self.device)
         self.setup_params(self.params)
 
     def setup_params(self, params):
@@ -141,7 +112,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
         params.structural_quench_params.tol = 1e-5
-        params.structural_quench_params.maxstep = self.nspins
+        params.structural_quench_params.maxstep = 10
         params.structural_quench_params.M = 4
         params.structural_quench_params.iprint=1
         params.structural_quench_params.verbosity=5
@@ -155,16 +126,11 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         tsparams.hessian_diagonalization = False
 
     def get_system_properties(self):
-        return dict(potential="PSpinSPherical_model",
-                    nspins=self.nspins,
-                    p=self.p,
-                    interactions=self.interactions,
+        return dict(potential="RegressionPotential",
+                    x_train_data=self.x_train_data,
+                    y_train_data=self.y_train_data,
+                    reg=self.reg,
                     )
-
-    def get_interactions(self, nspins, p):
-        norm = tf.random_normal([nspins for _ in xrange(p)], mean=0, stddev=1.0, dtype='float32')
-        interactions = norm.eval(session=tf.Session())
-        return interactions
 
     def get_minimizer(self, **kwargs):
         """return a function to minimize the structure
@@ -177,55 +143,47 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         --------
         pele.optimize
         """
-        def event_normalize_spins(**kwargs):
-             kwargs["coords"] = normalize_spins(kwargs["coords"])
         pot = self.get_potential()
         kwargs = dict_copy_update(self.params["structural_quench_params"], kwargs)
-        kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
         return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
 
-    def get_potential(self, dtype='float32'):
+    def get_potential(self, dtype='float32', device='cpu'):
         try:
             return self.pot
         except AttributeError:
-            self.pot = MeanFieldPSpinSphericalTF(self.interactions, self.nspins, self.p, dtype=dtype)
+            self.pot = RegressionPotential(self.x_train_data, self.y_train_data,
+                                           self.graph_type, reg=self.reg, dtype=dtype,
+                                           device=device)
             return self.pot
-
-    def _orthog_to_zero(self, v, coords):
-        zerov = [np.array(coords)/np.linalg.norm(coords)]
-        return orthogonalize(v, zerov)
 #
     def get_orthogonalize_to_zero_eigenvectors(self):
-        return self._orthog_to_zero
+        pass
     
     def get_metric_tensor(self, coords):
         return None
     
     def get_nzero_modes(self):
-        return 1
+        return 0
 
     def get_pgorder(self, coords):
         return 1
     
     def get_mindist(self):
-        even = self.p % 2 == 0
-        return lambda x1, x2 : spin_mindist_1d(x1, x2, even=even)
+        return lambda x1, x2 : mindist_1d(x1, x2)
 
     def get_compare_exact(self):
         """
         are they the same minima?
         """
-        even = self.p % 2 == 0
         return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-4, abs_tol=0.0,
-                                             method='weak', even=even, debug=True)
+                                             method='weak', debug=True)
 
     def smooth_path(self, path, **kwargs):
         mindist = self.get_mindist()
         return smooth_path(path, mindist, **kwargs)
 
     def get_random_configuration(self):
-        coords = np.random.normal(0, 1, self.nspins)
-        return normalize_spins(coords)
+        return np.random.normal(0, scale=0.01, size=self.ndim)
 
     def create_database(self, *args, **kwargs):
         return BaseSystem.create_database(self, *args, **kwargs)
@@ -244,53 +202,51 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         try:
             stepsize = kwargs.pop("stepsize")
         except KeyError:
-            stepsize = np.sqrt(self.nspins)/2
-        return UniformPSpinSPhericalRandomDisplacement(self.nspins, stepsize=stepsize)
+            stepsize = 0.01 # this is a completely random value
+        return UniformPSpinSPhericalRandomDisplacement(self.ndim, stepsize=stepsize)
 
     def draw(self, coords, index):
         pass
 
 
-def normalize_spins_db(db):
-    for m in db.minima():
-        x = normalize_spins(m.coords)
-        print np.max(x), np.min(x)
-        m.coords = x
-    db.session.commit()
+# def run_gui(x_train_data, y_train_data, graph_type, reg=0.01):
+#     from pele.gui import run_gui
+#     graph_type = LogisticRegressionGraph
+#     system = RegressionSystem(x_train_data, y_train_data, graph_type, reg=reg)
+#     run_gui(system)
 
 
-def run_gui(N, p):
-    from pele.gui import run_gui
-    system = MeanFieldPSpinSphericalSystem(N, p=p)
-    run_gui(system)
-
-
-def run_gui_db(dbname="pspin_spherical_p3_N20.sqlite"):
+def run_gui_db(dbname="regression_logit_mnist.sqlite"):
     from pele.gui import run_gui
     try:
         db = Database(dbname, createdb=False)
-        interactions = db.get_property("interactions").value()
-        nspins = db.get_property("nspins").value()
-        p = db.get_property("p").value()
+        x_train_data=db.get_property("x_train_data").value()[0],
+        y_train_data=db.get_property("y_train_data").value()[0],
+        reg=db.get_property("reg").value(),
     except IOError:
-        interactions=None
-    system = MeanFieldPSpinSphericalSystem(nspins, p=p, interactions=interactions)
+        pass
+    graph_type = LogisticRegressionGraph
+    print np.array(x_train_data).shape, np.array(y_train_data).shape
+    system = RegressionSystem(x_train_data, y_train_data, graph_type, reg=reg)
     run_gui(system, db=dbname)
 
 
 if __name__ == "__main__":
-    p = 3
-    N = 100
-    #run_gui(N, p)
-
-    if False:
-        system = MeanFieldPSpinSphericalSystem(N, p=p)
-        db = system.create_database("pspin_spherical_p{}_N{}.sqlite".format(p,N))
+    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+    bs = 1000
+    trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
+    reg=0.01
+    from pele.gui import run_gui
+    if True:
+        graph_type = LogisticRegressionGraph
+        system = RegressionSystem(trX, trY, graph_type, reg=reg)
+        db = system.create_database("regression_logit_mnist_batch{}.sqlite".format(bs))
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(20)
+        run_gui(system, db="regression_logit_mnist_batch{}.sqlite".format(bs))
 
-    if True:
-        run_gui_db(dbname="pspin_spherical_p{}_N{}.sqlite".format(p,N))
+    if False:
+        run_gui_db(dbname="regression_logit_mnist_batch{}.sqlite".format(bs))
 
     if False:
         compare_minima = lambda m1, m2 : compare_exact(m1.coords, m2.coords, rel_tol=1e-7, debug=False)
