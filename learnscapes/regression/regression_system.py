@@ -55,13 +55,14 @@ def compare_exact(x1, x2,
                   abs_tol=0.0,
                   method='weak',
                   debug=False):
-    N = x1.size
-    if debug:
-        assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
-    dot = np.dot(x1, x2)
-    same =(isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method) or
-           isClose(dot, -N, rel_tol=rel_tol, abs_tol=abs_tol, method=method))
-    return same
+    # this needs to be rewritte, maybe use minperdist
+    # N = x1.size
+    # if debug:
+    #     assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
+    # dot = np.dot(x1, x2)
+    # same =(isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method) or
+    #        isClose(dot, -N, rel_tol=rel_tol, abs_tol=abs_tol, method=method))
+    # return same
 
 @jit
 def dist(x1, x2):
@@ -85,8 +86,8 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
     def takeStep(self, coords, **kwargs):
         assert len(coords) == self.ndim
-        coords[self.srange] += np.random.uniform(low=-self.stepsize, high=self.stepsize, size=coords[self.srange].shape)
-
+        # coords[self.srange] += np.random.uniform(low=-self.stepsize, high=self.stepsize, size=coords[self.srange].shape)
+        coords[self.srange] = np.random.normal(0, scale=0.01, size=coords[self.srange].shape)*self.stepsize
 
 class RegressionSystem(BaseSystem):
     def __init__(self, x_train_data, y_train_data, graph_type, reg=0.01, dtype='float32', device='cpu'):
@@ -111,11 +112,11 @@ class RegressionSystem(BaseSystem):
         nebparams.adaptive_niter = True
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
-        params.structural_quench_params.tol = 1e-5
-        params.structural_quench_params.maxstep = 10
+        params.structural_quench_params.tol = 1e-7
+        params.structural_quench_params.maxstep = 1
         params.structural_quench_params.M = 4
-        params.structural_quench_params.iprint=1
-        params.structural_quench_params.verbosity=5
+        params.structural_quench_params.iprint=10
+        params.structural_quench_params.verbosity=0
 
         params.database.overwrite_properties = False
         
@@ -155,18 +156,18 @@ class RegressionSystem(BaseSystem):
                                            self.graph_type, reg=self.reg, dtype=dtype,
                                            device=device)
             return self.pot
-#
+
     def get_orthogonalize_to_zero_eigenvectors(self):
-        pass
+        return None
     
     def get_metric_tensor(self, coords):
         return None
     
-    def get_nzero_modes(self):
-        return 0
-
-    def get_pgorder(self, coords):
-        return 1
+    # def get_nzero_modes(self):
+    #     return 0
+    #
+    # def get_pgorder(self, coords):
+    #     return 1
     
     def get_mindist(self):
         return lambda x1, x2 : mindist_1d(x1, x2)
@@ -175,7 +176,7 @@ class RegressionSystem(BaseSystem):
         """
         are they the same minima?
         """
-        return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-4, abs_tol=0.0,
+        return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-6, abs_tol=0.0,
                                              method='weak', debug=True)
 
     def smooth_path(self, path, **kwargs):
@@ -202,7 +203,7 @@ class RegressionSystem(BaseSystem):
         try:
             stepsize = kwargs.pop("stepsize")
         except KeyError:
-            stepsize = 0.01 # this is a completely random value
+            stepsize = 1 # this is a completely random value
         return UniformPSpinSPhericalRandomDisplacement(self.ndim, stepsize=stepsize)
 
     def draw(self, coords, index):
@@ -239,23 +240,23 @@ if __name__ == "__main__":
     from pele.gui import run_gui
     if True:
         graph_type = LogisticRegressionGraph
-        system = RegressionSystem(trX, trY, graph_type, reg=reg)
+        system = RegressionSystem(trX, trY, graph_type, reg=reg, device='gpu')
         db = system.create_database("regression_logit_mnist_batch{}.sqlite".format(bs))
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(20)
-        run_gui(system, db="regression_logit_mnist_batch{}.sqlite".format(bs))
+        # run_gui(system, db="regression_logit_mnist_batch{}.sqlite".format(bs))
 
     if False:
         run_gui_db(dbname="regression_logit_mnist_batch{}.sqlite".format(bs))
 
-    if False:
-        compare_minima = lambda m1, m2 : compare_exact(m1.coords, m2.coords, rel_tol=1e-7, debug=False)
-        db = Database("pspin_spherical_p{}_N{}.sqlite".format(p,N))
+    if True:
+        compare_minima = lambda m1, m2 : compare_exact(np.sort(np.abs(m1.coords)), np.sort(np.abs(m2.coords)), rel_tol=1e-6, debug=False)
+        db = Database("regression_logit_mnist_batch{}.sqlite".format(bs))
         minima = db.minima()
         minima.sort(key=lambda m: m.energy)
-        #for m in minima:
+        # for m in minima:
         #    print m.energy, m.coords
-        print minima[0].energy, minima[0].coords
-        print minima[1].energy, minima[1].coords
+        print minima[0].energy, np.sort(np.abs(minima[0].coords))
+        print minima[1].energy, np.sort(np.abs(minima[1].coords))
         print compare_minima(minima[0],minima[1])
 

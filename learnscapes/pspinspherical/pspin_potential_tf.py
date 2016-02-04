@@ -4,7 +4,6 @@ import tensorflow as tf
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
 from learnscapes.utils import tfRnorm, tfOrthog, select_device_simple
-from learnscapes.pspinspherical import GradientDescent
 
 #this is the underlying graph
 

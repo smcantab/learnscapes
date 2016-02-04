@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 import cmath
-from numba import jit
+# from numba import jit
 import tensorflow as tf
 
 from learnscapes.pspinspherical import MeanFieldPSpinSphericalTF
@@ -51,7 +51,7 @@ def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
         raise ValueError('method must be one of:'
                          ' "asymmetric", "strong", "weak", "average"')
 
-@jit
+# @jit
 def compare_exact(x1, x2,
                   rel_tol=1e-9,
                   abs_tol=0.0,
@@ -72,18 +72,18 @@ def compare_exact(x1, x2,
     return same
 
 
-@jit
+# @jit
 def normalize_spins(x):
     x /= (np.linalg.norm(x)/np.sqrt(x.size))
     return x
 
 
-@jit
+# @jit
 def dist(x1, x2):
     return np.linalg.norm(x1 - x2)
 
 
-@jit
+# @jit
 def mindist_even(x1, x2):
     d1 = dist(x1, x2)
     d2 = dist(x1, -x2)
@@ -92,11 +92,11 @@ def mindist_even(x1, x2):
     else:
         return d2, x1, -x2
 
-@jit
+# @jit
 def mindist_odd(x1, x2):
     return dist(x1, x2), x1, x2
 
-@jit
+# @jit
 def spin_mindist_1d(x1, x2, even=False):
     x1 = normalize_spins(x1)
     x2 = normalize_spins(x2)
@@ -184,7 +184,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
         return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
 
-    def get_potential(self, dtype='float32', device=device):
+    def get_potential(self, dtype='float32', device='gpu'):
         try:
             return self.pot
         except AttributeError:
@@ -280,7 +280,7 @@ def run_gui_db(dbname="pspin_spherical_p3_N20.sqlite"):
 
 if __name__ == "__main__":
     p = 3
-    N = 100
+    N = 150
     #run_gui(N, p)
 
     if False:

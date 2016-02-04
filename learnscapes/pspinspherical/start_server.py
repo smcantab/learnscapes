@@ -54,8 +54,9 @@ def write_server_uri(server_name, hostname, port, nspins, p):
         out_server_uri.write(uri)
     return uri
 
-def create_system(nspins, p, interactions):
-    system = MeanFieldPSpinSphericalSystem(nspins, p=p, interactions=interactions)
+def create_system(nspins, p, interactions, dtype='float32', device='gpu'):
+    system = MeanFieldPSpinSphericalSystem(nspins, p=p, interactions=interactions,
+                                           dtype=dtype, device=device)
     return system
 
 def _get_database_params(dbname):
