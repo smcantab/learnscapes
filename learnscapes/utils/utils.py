@@ -1,3 +1,6 @@
+import cmath
+import numpy as np
+
 def select_device_simple(dev="cpu"):
     if dev == "cpu":
         return "/cpu:0"
@@ -39,3 +42,10 @@ def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
                 (diff <= abs_tol)))
     else:
         raise ValueError('method must be one of:'
+                         ' "asymmetric", "strong", "weak", "average"')
+
+
+def isCloseArray(a, b, rel_tol=1e-9, abs_tol=0.0):
+    a, b = np.array(a), np.array(b)
+    assert a.size == b.size, "learnscapes isCloseArray, arrays size mismatch"
+    return np.allclose(a, b, rtol=rel_tol, atol=abs_tol, equal_nan=False)

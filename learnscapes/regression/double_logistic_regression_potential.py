@@ -160,7 +160,7 @@ def main():
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
 
     # like in linear regression, we need a shared variable weight matrix for logistic regression
-    hnodes = 625
+    hnodes = 10 #625
     w_h = init_weights([784, hnodes])
     w_o = init_weights([hnodes, 10])
     w = np.append(w_h, w_o)

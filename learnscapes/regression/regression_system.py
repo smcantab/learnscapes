@@ -9,34 +9,28 @@ from pele.optimize import lbfgs_cpp
 from pele.landscape import smooth_path
 from pele.takestep.generic import TakestepSlice
 from pele.storage import Database
-from learnscapes.regression import RegressionPotential, LogisticRegressionGraph
-from learnscapes.utils import isClose
+from learnscapes.regression import DoubleLogisticRegressionPotential
+from learnscapes.utils import isCloseArray
 
 def compare_exact(x1, x2,
                   rel_tol=1e-9,
                   abs_tol=0.0,
-                  method='weak',
                   debug=False):
     # this needs to be rewritte, maybe use minperdist
-    # N = x1.size
-    # if debug:
-    #     assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
-    # dot = np.dot(x1, x2)
-    # same =(isClose(dot, N, rel_tol=rel_tol, abs_tol=abs_tol, method=method) or
-    #        isClose(dot, -N, rel_tol=rel_tol, abs_tol=abs_tol, method=method))
-    # return same
+    if debug:
+        assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
+    same = isCloseArray(np.sort(np.abs(x1)), np.sort(np.abs(x2)),
+                        rel_tol=rel_tol, abs_tol=abs_tol)
+    return same
+
 
 def dist(x1, x2):
     return np.linalg.norm(x1 - x2)
 
 
 def mindist_1d(x1, x2):
-    d1 = dist(x1, x2)
-    d2 = dist(x1, -x2)
-    if d1 < d2:
-        return d1, x1, x2
-    else:
-        return d2, x1, -x2
+    return dist(x1, x2), x1, x2
+
 
 class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
@@ -49,29 +43,30 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
         # coords[self.srange] += np.random.uniform(low=-self.stepsize, high=self.stepsize, size=coords[self.srange].shape)
         coords[self.srange] = np.random.normal(0, scale=0.01, size=coords[self.srange].shape)*self.stepsize
 
+
 class RegressionSystem(BaseSystem):
-    def __init__(self, x_train_data, y_train_data, graph_type, reg=0.01, dtype='float32', device='cpu'):
+    def __init__(self, x_train_data, y_train_data, hnodes, reg=0.01, dtype='float32', device='cpu'):
         BaseSystem.__init__(self)
-        self.x_train_data = np.array(x_train_data)
-        self.y_train_data = np.array(y_train_data)
-        self.graph_type = graph_type
+        self.x_train_data = np.array(x_train_data, dtype=dtype)
+        self.y_train_data = np.array(y_train_data, dtype=dtype)
+        self.hnodes = hnodes
         self.dtype = dtype
         self.device = device
         self.reg = reg
-        self.ndim = self.y_train_data.shape[1]*(self.x_train_data.shape[1]+1)
+        self.ndim = (self.y_train_data.shape[1]*self.hnodes + self.hnodes*self.x_train_data.shape[1] + self.hnodes + self.y_train_data.shape[1])
         self.pot = self.get_potential(dtype=self.dtype, device=self.device)
         self.setup_params(self.params)
 
     def setup_params(self, params):
         params.takestep.verbose = True
         nebparams = params.double_ended_connect.local_connect_params.NEBparams
-        nebparams.image_density = 0.8
-        nebparams.iter_density = 50.
-        nebparams.reinterpolate = 50
-        nebparams.adaptive_nimages = True
-        nebparams.adaptive_niter = True
-        nebparams.adjustk_freq = 10
-        nebparams.k = 2000
+        # nebparams.image_density = 0.8
+        # nebparams.iter_density = 50.
+        # nebparams.reinterpolate = 50
+        # nebparams.adaptive_nimages = True
+        # nebparams.adaptive_niter = True
+        # nebparams.adjustk_freq = 10
+        # nebparams.k = 2000
         params.structural_quench_params.tol = 1e-7
         params.structural_quench_params.maxstep = 1
         params.structural_quench_params.M = 4
@@ -91,6 +86,7 @@ class RegressionSystem(BaseSystem):
                     x_train_data=self.x_train_data,
                     y_train_data=self.y_train_data,
                     reg=self.reg,
+                    hnodes=self.hnodes,
                     )
 
     def get_minimizer(self, **kwargs):
@@ -112,9 +108,8 @@ class RegressionSystem(BaseSystem):
         try:
             return self.pot
         except AttributeError:
-            self.pot = RegressionPotential(self.x_train_data, self.y_train_data,
-                                           self.graph_type, reg=self.reg, dtype=dtype,
-                                           device=device)
+            self.pot = DoubleLogisticRegressionPotential(self.x_train_data, self.y_train_data, self.hnodes,
+                                                         reg=self.reg, dtype=dtype, device=device)
             return self.pot
 
     def get_orthogonalize_to_zero_eigenvectors(self):
@@ -136,8 +131,7 @@ class RegressionSystem(BaseSystem):
         """
         are they the same minima?
         """
-        return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-6, abs_tol=0.0,
-                                             method='weak', debug=True)
+        return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-6, abs_tol=0.0, debug=True)
 
     def smooth_path(self, path, **kwargs):
         mindist = self.get_mindist()
@@ -170,53 +164,64 @@ class RegressionSystem(BaseSystem):
         pass
 
 
-# def run_gui(x_train_data, y_train_data, graph_type, reg=0.01):
+# def run_gui(x_train_data, y_train_data, reg=0.01):
 #     from pele.gui import run_gui
-#     graph_type = LogisticRegressionGraph
-#     system = RegressionSystem(x_train_data, y_train_data, graph_type, reg=reg)
+#     system = RegressionSystem(x_train_data, y_train_data, reg=reg)
 #     run_gui(system)
-
 
 def run_gui_db(dbname="regression_logit_mnist.sqlite"):
     from pele.gui import run_gui
     try:
         db = Database(dbname, createdb=False)
-        x_train_data=db.get_property("x_train_data").value()[0],
-        y_train_data=db.get_property("y_train_data").value()[0],
+        x_train_data=db.get_property("x_train_data").value(),
+        y_train_data=db.get_property("y_train_data").value(),
+        hnodes=db.get_property("hnodes").value(),
         reg=db.get_property("reg").value(),
     except IOError:
         pass
-    graph_type = LogisticRegressionGraph
+    hnodes, reg = hnodes[0], reg[0]
+    x_train_data, y_train_data = np.array(np.array(x_train_data)[0,:,:]), np.array(np.array(y_train_data)[0,:,:])
     print np.array(x_train_data).shape, np.array(y_train_data).shape
-    system = RegressionSystem(x_train_data, y_train_data, graph_type, reg=reg)
-    run_gui(system, db=dbname)
+    system = RegressionSystem(x_train_data, y_train_data, hnodes, reg=reg)
+    # run_gui(system, db=dbname)
+    run_double_ended_connect(system, db, strategy='random')
 
+def run_double_ended_connect(system, database, strategy='gmin'):
+    # connect the all minima to the lowest minimum
+    from pele.landscape import ConnectManager
+    manager = ConnectManager(database, strategy=strategy)
+    for i in xrange(database.number_of_minima()-1):
+        min1, min2 = manager.get_connect_job()
+        connect = system.get_double_ended_connect(min1, min2, database)
+        connect.connect()
 
-if __name__ == "__main__":
+def main():
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 1000
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
     reg=0.01
-    from pele.gui import run_gui
+    hnodes = 100
     if True:
-        graph_type = LogisticRegressionGraph
-        system = RegressionSystem(trX, trY, graph_type, reg=reg, device='gpu')
+        system = RegressionSystem(trX, trY, hnodes, reg=reg, device='gpu')
         db = system.create_database("regression_logit_mnist_batch{}.sqlite".format(bs))
         bh = system.get_basinhopping(database=db, outstream=None)
-        bh.run(20)
+        bh.run(10)
         # run_gui(system, db="regression_logit_mnist_batch{}.sqlite".format(bs))
 
-    if False:
+    if True:
         run_gui_db(dbname="regression_logit_mnist_batch{}.sqlite".format(bs))
 
-    if True:
+    if False:
         compare_minima = lambda m1, m2 : compare_exact(np.sort(np.abs(m1.coords)), np.sort(np.abs(m2.coords)), rel_tol=1e-6, debug=False)
         db = Database("regression_logit_mnist_batch{}.sqlite".format(bs))
         minima = db.minima()
         minima.sort(key=lambda m: m.energy)
-        # for m in minima:
-        #    print m.energy, m.coords
+        for m in minima:
+           print m.energy#, m.coords
         print minima[0].energy, np.sort(np.abs(minima[0].coords))
-        print minima[1].energy, np.sort(np.abs(minima[1].coords))
-        print compare_minima(minima[0],minima[1])
+        print minima[2].energy, np.sort(np.abs(minima[2].coords))
+        print compare_minima(minima[0],minima[2])
 
+
+if __name__ == "__main__":
+    main()
