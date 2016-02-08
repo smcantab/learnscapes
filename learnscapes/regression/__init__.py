@@ -1,1 +1,2 @@
-from regression_potential import RegressionPotential, LogisticRegressionGraph, LinearRegressionGraph
+from double_logistic_regression_potential import RegressionPotential, LogisticRegressionGraph, LinearRegressionGraph
+from _base_regression_graph import BaseRegressionGraph
