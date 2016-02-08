@@ -124,6 +124,12 @@ class DoubleLogisticRegressionPotential(BasePotential):
         return e, self.tf_to_pele(grad_w_h, grad_w_o,
                                   grad_b_h, grad_b_o)
 
+    # def getEnergyGradientHessian(self, coords):
+    #     e, g = self.getEnergyGradient(coords)
+    #     h = self.NumericalHessian(coords, eps=1e-6)
+    #     return e, g, h
+
+
     def test_model(self, coords, x_test, y_test):
         w_h, w_o, b_h, b_o = self.pele_to_tf(coords)
         prediction = self.session.run([self.tf_graph.gpredict],
@@ -156,7 +162,7 @@ def main():
     device = 'gpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-    bs = -1
+    bs = 1000
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
 
     # like in linear regression, we need a shared variable weight matrix for logistic regression
@@ -168,13 +174,18 @@ def main():
     b_o = np.ones(10)*0.1
     b = np.append(b_h, b_o)
     weights = np.append(w, b)
-    potTF = DoubleLogisticRegressionPotential(trX, trY, hnodes, reg=0.01, dtype=dtype, device=device)
+    potTF = DoubleLogisticRegressionPotential(trX, trY, hnodes, reg=0.1, dtype=dtype, device=device)
 
     e, grad = potTF.getEnergyGradient(weights)
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e, np.linalg.norm(grad))
 
     results = minimize(potTF, weights)
-    print potTF.test_model(np.array(results.coords), teX, teY)
+    # print potTF.test_model(np.array(results.coords), teX, teY)
+
+    from pele.transition_states import findLowestEigenVector, analyticalLowestEigenvalue
+    res = findLowestEigenVector(np.array(results.coords), potTF, orthogZeroEigs=None, iprint=1, tol=1e-6)
+    print res.H0
+    print analyticalLowestEigenvalue(np.array(results.coords), potTF)
 
 if __name__ == "__main__":
     main()
