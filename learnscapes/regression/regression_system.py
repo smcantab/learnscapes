@@ -1,7 +1,6 @@
 from __future__ import division
 import numpy as np
 import cmath
-from numba import jit
 from tensorflow.examples.tutorials.mnist import input_data
 
 from pele.systems import BaseSystem
@@ -11,45 +10,8 @@ from pele.landscape import smooth_path
 from pele.takestep.generic import TakestepSlice
 from pele.storage import Database
 from learnscapes.regression import RegressionPotential, LogisticRegressionGraph
+from learnscapes.utils import isClose
 
-def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
-    """
-    code imported from math.isclose python 3.5
-    """
-    if method not in ("asymmetric", "strong", "weak", "average"):
-        raise ValueError('method must be one of: "asymmetric",'
-                         ' "strong", "weak", "average"')
-
-    if rel_tol < 0.0 or abs_tol < 0.0:
-        raise ValueError('error tolerances must be non-negative')
-
-    if a == b:  # short-circuit exact equality
-        return True
-    # use cmath so it will work with complex or float
-    if cmath.isinf(a) or cmath.isinf(b):
-        # This includes the case of two infinities of opposite sign, or
-        # one infinity and one finite number. Two infinities of opposite sign
-        # would otherwise have an infinite relative tolerance.
-        return False
-    diff = abs(b - a)
-    if method == "asymmetric":
-        return (diff <= abs(rel_tol * b)) or (diff <= abs_tol)
-    elif method == "strong":
-        return (((diff <= abs(rel_tol * b)) and
-                 (diff <= abs(rel_tol * a))) or
-                (diff <= abs_tol))
-    elif method == "weak":
-        return (((diff <= abs(rel_tol * b)) or
-                 (diff <= abs(rel_tol * a))) or
-                (diff <= abs_tol))
-    elif method == "average":
-        return ((diff <= abs(rel_tol * (a + b) / 2) or
-                (diff <= abs_tol)))
-    else:
-        raise ValueError('method must be one of:'
-                         ' "asymmetric", "strong", "weak", "average"')
-
-@jit
 def compare_exact(x1, x2,
                   rel_tol=1e-9,
                   abs_tol=0.0,
@@ -64,12 +26,10 @@ def compare_exact(x1, x2,
     #        isClose(dot, -N, rel_tol=rel_tol, abs_tol=abs_tol, method=method))
     # return same
 
-@jit
 def dist(x1, x2):
     return np.linalg.norm(x1 - x2)
 
 
-@jit
 def mindist_1d(x1, x2):
     d1 = dist(x1, x2)
     d2 = dist(x1, -x2)
