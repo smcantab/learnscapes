@@ -55,6 +55,26 @@ class DoubleLogisticRegressionGraph(BaseRegressionGraph):
     def compute_gradient(self):
         return tf.gradients(self.regularised_loss, [self.w_h, self.w_o, self.b_h, self.b_o])
 
+    # @property
+    # def compute_hessian(self):
+    #     n = self.shape[0]*self.hnodes+self.hnodes*self.shape[1]+self.hnodes+self.shape[1]
+    #     n1 = self.shape[0]*self.hnodes
+    #     for i in xrange(n1):
+    #         for j in xrange(i, n1):
+    #             self.hess[i, ]
+    #     n2 = n1 + self.hnodes*self.shape[1]
+    #     for i in xrange(n1,n2):
+    #         for j in xrange(i, n2):
+    #             # run something
+    #     n3 = n2 + self.hnodes
+    #     for i in xrange(n2,n3):
+    #         for j in xrange(i, n3):
+    #             # run something
+    #     n4 = n3 + self.shape[1]
+    #     for i in xrange(n3,n4):
+    #         for j in xrange(i, n4):
+    #             # run something
+
     @property
     def predict(self):
         """this tests the models, at predict time, evaluate the argmax of the logistic regression

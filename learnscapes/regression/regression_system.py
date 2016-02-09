@@ -48,7 +48,7 @@ class RegressionSystem(BaseSystem):
     def setup_params(self, params):
         params.takestep.verbose = True
         lcp = params.double_ended_connect.local_connect_params
-        lcp.pushoff_params.update(dict(stepmin=0.2))
+        lcp.pushoff_params.update(dict(stepmin=0.5))
         lcp.tsSearchParams.lowestEigenvectorQuenchParams.update(dict(dx=0.5e-3))
 
         nebparams = lcp.NEBparams
@@ -60,7 +60,7 @@ class RegressionSystem(BaseSystem):
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
 
-        params.structural_quench_params.tol = 1e-6
+        params.structural_quench_params.tol = 1e-5
         params.structural_quench_params.maxstep = 1
         params.structural_quench_params.M = 4
         params.structural_quench_params.iprint=100
@@ -133,10 +133,19 @@ class RegressionSystem(BaseSystem):
 
     def get_takestep(self, **kwargs):
         """return the takestep object for use in basinhopping, etc."""
-        return RandomDisplacement(stepsize=2)
+        return RandomDisplacement(stepsize=1.5)
 
     def draw(self, coords, index):
         pass
+
+    def get_metric_tensor(self, coords):
+        return None
+
+    def get_nzero_modes(self):
+        return 0
+
+    def get_pgorder(self, coords):
+        return 1
 
 # def run_gui(x_train_data, y_train_data, reg=0.01):
 #     from pele.gui import run_gui
@@ -159,6 +168,8 @@ def run_gui_db(dbname="regression_logit_mnist.sqlite"):
     system = RegressionSystem(x_train_data, y_train_data, hnodes, reg=reg)
     run_gui(system, db=dbname)
     # run_double_ended_connect(system, db, strategy='random')
+    # from pele.thermodynamics import get_thermodynamic_information
+    # get_thermodynamic_informationormation(system, db, nproc=1, verbose=True)
 
 def run_double_ended_connect(system, database, strategy='random'):
     # connect the all minima to the lowest minimum
@@ -173,17 +184,18 @@ def main():
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 1000
     trX, trY, teX, teY = mnist.train.images[::int(50000/bs)], mnist.train.labels[::int(50000/bs)], mnist.test.images, mnist.test.labels
-    reg=0.1
+    reg=0.01
     hnodes = 10
-    bh = True
+    bh = False
     if bh:
         system = RegressionSystem(trX, trY, hnodes, reg=reg, device='gpu')
         db = system.create_database("regression_logit_mnist_batch{}.sqlite".format(bs))
         bh = system.get_basinhopping(database=db, outstream=None)
-        bh.run(1000)
+        bh.run(10000)
         # run_gui(system, db="regression_logit_mnist_batch{}.sqlite".format(bs))
 
-    if not bh:
+    # if not bh:
+    if True:
         run_gui_db(dbname="regression_logit_mnist_batch{}.sqlite".format(bs))
 
     if bh:
