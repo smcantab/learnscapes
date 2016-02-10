@@ -4,16 +4,16 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
-from learnscapes.regression import BaseRegressionGraph
-from learnscapes.utils import tfRnorm, tfOrthog, select_device_simple
+from learnscapes.regression import BaseMLGraph
+from learnscapes.utils import select_device_simple
 
 
-class LogisticRegressionGraph(BaseRegressionGraph):
+class LogisticRegressionGraph(BaseMLGraph):
     """
     linear regression model of the form y = w*x, so this model is very simple
     """
     def __init__(self, x_train_data, y_train_data, reg=0, dtype='float32'):
-        super(LogisticRegressionGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
+        super(self.__class__, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
 
     def __call__(self, graph=tf.Graph()):
         """

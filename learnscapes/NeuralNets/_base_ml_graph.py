@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 import tensorflow as tf
 
-class BaseRegressionGraph(object):
+class BaseMLGraph(object):
     """
     this should not have its own graph or its own section, it defines only the graph
     """

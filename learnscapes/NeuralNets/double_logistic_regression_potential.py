@@ -4,17 +4,17 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
-from learnscapes.regression import BaseRegressionGraph
-from learnscapes.utils import tfRnorm, tfOrthog, select_device_simple
+from learnscapes.regression import BaseMLGraph
+from learnscapes.utils import select_device_simple
 
 
-class DoubleLogisticRegressionGraph(BaseRegressionGraph):
+class DoubleLogisticRegressionGraph(BaseMLGraph):
     """
     this is a basic mlp, think 2 stacked logistic regressions
     :param hnodes: number of hidden nodes
     """
     def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float32'):
-        super(DoubleLogisticRegressionGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
+        super(self.__class__, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
         self.hnodes = hnodes
 
     def __call__(self, graph=tf.Graph()):
