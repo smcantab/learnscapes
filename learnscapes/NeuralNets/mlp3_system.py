@@ -84,7 +84,6 @@ def run_gui_db(dbname="regression_logit_mnist.sqlite", device='cpu'):
     print np.array(x_train_data).shape, np.array(y_train_data).shape
     system = Mlp3System(x_train_data, y_train_data, hnodes, reg=reg, device=device)
     run_gui(system, db=dbname)
-    # run_double_ended_connect(system, db, strategy='gmin')
     # from pele.thermodynamics import get_thermodynamic_information
     # get_thermodynamic_informationormation(system, db, nproc=1, verbose=True)
 
@@ -97,16 +96,16 @@ def main():
     hnodes = 100
     system = Mlp3System(trX, trY, hnodes, reg=reg, device='cpu')
     db = system.create_database("mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg))
-    bh = False
+    bh = True
 
     if bh:
-        bh = system.get_basinhopping(database=db, outstream=None)
-        bh.run(10000)
-        database_stats(system, db)
+        # bh = system.get_basinhopping(database=db, outstream=None)
+        # bh.run(10000)
+        # run_double_ended_connect(system, db, strategy='gmin')
+        database_stats(system, db, teX, teY, fname="mlp3_mnist_h{}_p{}_r{}.pdf".format(hnodes, bs, reg))
 
     if not bh:
-        make_disconnectivity_graph(system, db, teX, teY)
-        # run_gui_db(dbname="mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg), device='cpu')
+        run_gui_db(dbname="mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg), device='cpu')
 
     # if bh:
     #     # compare_minima = lambda m1, m2 : compare_exact(np.sort(np.abs(m1.coords)), np.sort(np.abs(m2.coords)), rel_tol=1e-5, debug=False)

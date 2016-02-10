@@ -51,18 +51,18 @@ def isCloseArray(a, b, rel_tol=1e-9, abs_tol=0.0):
     return np.allclose(a, b, rtol=rel_tol, atol=abs_tol, equal_nan=False)
 
 
-def database_stats(system, db, **kwargs):
+def database_stats(system, db, x_test, y_test, fname='dg.pdf', **kwargs):
 
     pot = system.get_potential()
 
     print "Nminima = ", len(db.minima())
     print "Nts = ", len(db.transition_states())
 
-    make_disconnectivity_graph(system, db, **kwargs)
+    make_disconnectivity_graph(system, db, x_test, y_test, fname=fname, **kwargs)
 
     print "Minimum Energy, RMS grad: "
     for m in db.minima():
-        print m.energy, np.linalg.norm(pot.getEnergyGradient(m.coords)[1])
+        print m.energy, np.linalg.norm(pot.getEnergyGradient(m.coords)[1]/np.sqrt(m.coords.size))
 
 
 def run_double_ended_connect(system, database, strategy='random'):
@@ -75,7 +75,7 @@ def run_double_ended_connect(system, database, strategy='random'):
         connect.connect()
 
 
-def make_disconnectivity_graph(system, database, x_test, y_test, **kwargs):
+def make_disconnectivity_graph(system, database, x_test, y_test, fname='dg.pdf', **kwargs):
     import matplotlib.pyplot as plt
     from pele.utils.disconnectivity_graph import DisconnectivityGraph, database2graph
     graph = database2graph(database)
@@ -86,4 +86,4 @@ def make_disconnectivity_graph(system, database, x_test, y_test, **kwargs):
     minimum_to_testerror = lambda m: system.pot.test_model(m.coords, x_test, y_test)
     dg.color_by_value(minimum_to_testerror, colormap=plt.cm.ScalarMappable(cmap='YlGnBu').get_cmap())
     dg.plot(linewidth=1.5)
-    plt.show()
+    plt.savefig(fname)
