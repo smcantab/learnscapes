@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
-from learnscapes.regression import BaseMLGraph
+from learnscapes.NeuralNets import BaseMLGraph
 from learnscapes.utils import select_device_simple
 
 

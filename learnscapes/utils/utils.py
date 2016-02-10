@@ -49,3 +49,41 @@ def isCloseArray(a, b, rel_tol=1e-9, abs_tol=0.0):
     a, b = np.array(a), np.array(b)
     assert a.size == b.size, "learnscapes isCloseArray, arrays size mismatch"
     return np.allclose(a, b, rtol=rel_tol, atol=abs_tol, equal_nan=False)
+
+
+def database_stats(system, db, **kwargs):
+
+    pot = system.get_potential()
+
+    print "Nminima = ", len(db.minima())
+    print "Nts = ", len(db.transition_states())
+
+    make_disconnectivity_graph(system, db, **kwargs)
+
+    print "Minimum Energy, RMS grad: "
+    for m in db.minima():
+        print m.energy, np.linalg.norm(pot.getEnergyGradient(m.coords)[1])
+
+
+def run_double_ended_connect(system, database, strategy='random'):
+    # connect the all minima to the lowest minimum
+    from pele.landscape import ConnectManager
+    manager = ConnectManager(database, strategy=strategy)
+    for i in xrange(database.number_of_minima()-1):
+        min1, min2 = manager.get_connect_job()
+        connect = system.get_double_ended_connect(min1, min2, database)
+        connect.connect()
+
+
+def make_disconnectivity_graph(system, database, x_test, y_test, **kwargs):
+    import matplotlib.pyplot as plt
+    from pele.utils.disconnectivity_graph import DisconnectivityGraph, database2graph
+    graph = database2graph(database)
+    dg = DisconnectivityGraph(graph, **kwargs)
+    dg.calculate()
+
+    # color DG points by test-set error
+    minimum_to_testerror = lambda m: system.pot.test_model(m.coords, x_test, y_test)
+    dg.color_by_value(minimum_to_testerror, colormap=plt.cm.ScalarMappable(cmap='YlGnBu').get_cmap())
+    dg.plot(linewidth=1.5)
+    plt.show()

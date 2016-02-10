@@ -5,8 +5,8 @@ from tensorflow.examples.tutorials.mnist import input_data
 from pele.systems import BaseSystem
 from pele.takestep import RandomCluster, RandomDisplacement
 from pele.storage import Database
-from learnscapes.regression import DoubleLogisticRegressionPotential
-from learnscapes.regression import NNBaseSystem
+from learnscapes.NeuralNets import DoubleLogisticRegressionPotential
+from learnscapes.NeuralNets import NNBaseSystem
 
 # def compare_exact(x1, x2,
 #                   rel_tol=1e-9,
@@ -88,41 +88,36 @@ def run_gui_db(dbname="regression_logit_mnist.sqlite", device='cpu'):
     # from pele.thermodynamics import get_thermodynamic_information
     # get_thermodynamic_informationormation(system, db, nproc=1, verbose=True)
 
-def run_double_ended_connect(system, database, strategy='random'):
-    # connect the all minima to the lowest minimum
-    from pele.landscape import ConnectManager
-    manager = ConnectManager(database, strategy=strategy)
-    for i in xrange(database.number_of_minima()-1):
-        min1, min2 = manager.get_connect_job()
-        connect = system.get_double_ended_connect(min1, min2, database)
-        connect.connect()
-
 def main():
+    from learnscapes.utils import database_stats, make_disconnectivity_graph
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 1000
     trX, trY, teX, teY = mnist.train.images[::int(50000/bs)], mnist.train.labels[::int(50000/bs)], mnist.test.images, mnist.test.labels
     reg=0.01
     hnodes = 100
+    system = Mlp3System(trX, trY, hnodes, reg=reg, device='cpu')
+    db = system.create_database("mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg))
     bh = False
+
     if bh:
-        system = Mlp3System(trX, trY, hnodes, reg=reg, device='cpu')
-        db = system.create_database("mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg))
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(10000)
+        database_stats(system, db)
 
     if not bh:
-        run_gui_db(dbname="mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg), device='cpu')
+        make_disconnectivity_graph(system, db, teX, teY)
+        # run_gui_db(dbname="mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg), device='cpu')
 
-    if bh:
-        # compare_minima = lambda m1, m2 : compare_exact(np.sort(np.abs(m1.coords)), np.sort(np.abs(m2.coords)), rel_tol=1e-5, debug=False)
-        db = Database("mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg))
-        minima = db.minima()
-        minima.sort(key=lambda m: m.energy)
-        for m in minima:
-           print m.energy#, m.coords
-        # print minima[0].energy, np.sort(np.abs(minima[0].coords))
-        # print minima[1].energy, np.sort(np.abs(minima[1].coords))
-        # print compare_minima(minima[2],minima[3])
+    # if bh:
+    #     # compare_minima = lambda m1, m2 : compare_exact(np.sort(np.abs(m1.coords)), np.sort(np.abs(m2.coords)), rel_tol=1e-5, debug=False)
+    #     db = Database("mlp3_mnist_h{}_p{}_r{}.sqlite".format(hnodes, bs, reg))
+    #     minima = db.minima()
+    #     minima.sort(key=lambda m: m.energy)
+    #     for m in minima:
+    #        print m.energy#, m.coords
+    #     # print minima[0].energy, np.sort(np.abs(minima[0].coords))
+    #     # print minima[1].energy, np.sort(np.abs(minima[1].coords))
+    #     # print compare_minima(minima[2],minima[3])
 
 
 if __name__ == "__main__":
