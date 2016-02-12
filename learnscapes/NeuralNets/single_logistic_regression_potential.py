@@ -13,7 +13,7 @@ class LogisticRegressionGraph(BaseMLGraph):
     linear regression model of the form y = w*x, so this model is very simple
     """
     def __init__(self, x_train_data, y_train_data, reg=0, dtype='float32'):
-        super(self.__class__, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
+        super(LogisticRegressionGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
 
     def __call__(self, graph=tf.Graph()):
         """

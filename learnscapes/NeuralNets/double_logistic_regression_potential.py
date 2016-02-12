@@ -13,8 +13,8 @@ class DoubleLogisticRegressionGraph(BaseMLGraph):
     this is a basic mlp, think 2 stacked logistic regressions
     :param hnodes: number of hidden nodes
     """
-    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float32'):
-        super(self.__class__, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
+    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float64'):
+        super(DoubleLogisticRegressionGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
         self.hnodes = hnodes
 
     def __call__(self, graph=tf.Graph()):
@@ -88,7 +88,7 @@ class DoubleLogisticRegressionPotential(BasePotential):
     """
     potential that can be used with pele toolbox
     """
-    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float32', device='cpu'):
+    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float64', device='cpu'):
         self.device = select_device_simple(dev=device)
         # the following scheme needs to be followed to avoid repeated addition of ops to
         # the graph
@@ -178,7 +178,7 @@ def main():
     def init_weights(shape):
         return np.random.normal(0, scale=0.01, size=shape).flatten()
 
-    dtype = 'float32'
+    dtype = 'float64'
     device = 'gpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)

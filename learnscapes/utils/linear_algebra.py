@@ -14,5 +14,5 @@ def tfOrthog(x, zerov):
     ox = tf.sub(x, tf.mul(tfDot(x, zerov), zerov))
     return tf.sub(ox, tf.mul(tfDot(ox, zerov), zerov))
 
-def Nnorm(x, sqrtN):
+def tfNnorm(x, sqrtN):
     return tf.mul(x, tf.mul(tfRnorm(x), sqrtN))

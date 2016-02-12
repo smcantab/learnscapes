@@ -30,7 +30,7 @@ def mindist_1d(x1, x2):
 
 class Mlp3System(NNBaseSystem):
     def __init__(self, x_train_data, y_train_data, hnodes, reg=0.1, dtype='float64', device='cpu'):
-        super(self.__class__, self).__init__(x_train_data, y_train_data, dtype=dtype, device=device)
+        super(Mlp3System, self).__init__(x_train_data, y_train_data, dtype=dtype, device=device)
         self.hnodes = hnodes
         self.reg = reg
         self.ndim = (self.y_train_data.shape[1]*self.hnodes + self.hnodes*self.x_train_data.shape[1] + self.hnodes + self.y_train_data.shape[1])
