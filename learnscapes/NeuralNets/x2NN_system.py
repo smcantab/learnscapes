@@ -42,7 +42,7 @@ class Mlp3System(NNBaseSystem):
 
     def get_takestep(self, **kwargs):
         """return the takestep object for use in basinhopping, etc."""
-        return RandomDisplacement(stepsize=1)
+        return RandomDisplacement(stepsize=2.5)
 
     # def get_compare_exact(self):
     #     """
@@ -105,8 +105,8 @@ def main():
 
     if bh:
         bh = system.get_basinhopping(database=db, outstream=None)
-        bh.run(1000)
-        run_double_ended_connect(system, db, strategy='gmin')
+        bh.run(10)
+        # run_double_ended_connect(system, db, strategy='gmin')
         database_stats(system, db, teX, teY, fname="{}_mnist_h{}_p{}_r{}.sqlite".format(system.name, hnodes, bs, reg))
 
     if not bh:
