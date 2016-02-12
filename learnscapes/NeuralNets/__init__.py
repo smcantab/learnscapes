@@ -1,4 +1,5 @@
 from _base_ml_graph import BaseMLGraph
 from single_logistic_regression_potential import LogisticRegressionPotential
 from double_logistic_regression_potential import DoubleLogisticRegressionPotential, DoubleLogisticRegressionGraph
+from elu_2NN_potential import Elu2NNGraph, Elu2NNPotential
 from _NN_base_system import NNBaseSystem

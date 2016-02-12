@@ -7,6 +7,23 @@ def select_device_simple(dev="cpu"):
     else:
         return "/gpu:0"
 
+def dist(x1, x2):
+    return np.linalg.norm(x1 - x2)
+
+def mindist_1d(x1, x2):
+    return dist(x1, x2), x1, x2
+
+# def compare_exact(x1, x2,
+#                   rel_tol=1e-9,
+#                   abs_tol=0.0,
+#                   debug=False):
+#     # this needs to be rewritte, maybe use minperdist
+#     if debug:
+#         assert x1.size == x2.size, "x1.size: {} x2.size: {}".format(x1.size, x2.size)
+#     same = isCloseArray(np.sort(np.abs(x1)), np.sort(np.abs(x2)),
+#                         rel_tol=rel_tol, abs_tol=abs_tol)
+#     return same
+
 def isClose(a, b, rel_tol=1e-9, abs_tol=0.0, method='weak'):
     """
     code imported from math.isclose python 3.5

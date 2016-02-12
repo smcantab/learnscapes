@@ -84,7 +84,7 @@ def main():
     b_o = np.ones(10)*0.1
     b = np.append(b_h, b_o)
     weights = np.append(w, b)
-    potTF = Elu2NNPotential(trX, trY, hnodes, reg=0.01, dtype=dtype, device=device)
+    potTF = Elu2NNPotential(trX, trY, hnodes, dtype=dtype, device=device)
 
     e, grad = potTF.getEnergyGradient(weights)
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e, np.linalg.norm(grad))
