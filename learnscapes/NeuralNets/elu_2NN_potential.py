@@ -69,7 +69,7 @@ def main():
         return np.random.normal(0, scale=0.01, size=shape).flatten()
 
     dtype = 'float64'
-    device = 'gpu'
+    device = 'cpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 1000

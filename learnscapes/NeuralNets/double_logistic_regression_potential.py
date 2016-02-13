@@ -16,6 +16,10 @@ class DoubleLogisticRegressionGraph(BaseMLGraph):
     def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float64'):
         super(DoubleLogisticRegressionGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
         self.hnodes = hnodes
+        self.ndim = (self.x_train_data.shape[1]*self.hnodes +
+                     self.hnodes*self.y_train_data.shape[1] +
+                     self.hnodes +
+                     self.y_train_data.shape[1])
 
     def __call__(self, graph=tf.Graph()):
         """

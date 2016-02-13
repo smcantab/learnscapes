@@ -17,6 +17,11 @@ class Elu3NNGraph(BaseMLGraph):
         super(Elu3NNGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
         self.hnodes = hnodes
         self.hnodes2 = hnodes2
+        self.ndim = (self.x_train_data.shape[1]*self.hnodes +
+                     self.hnodes * self.hnodes2 +
+                     self.hnodes2*self.y_train_data.shape[1] +
+                     self.hnodes + self.hnodes2 +
+                     self.y_train_data.shape[1])
 
     def __call__(self, graph=tf.Graph()):
         """
@@ -95,7 +100,7 @@ class Elu3NNPotential(BasePotential):
     def pele_to_tf(self, coords):
         featdim, outdim = self.tf_graph.shape
         hnodes = self.tf_graph.hnodes
-        hnodes2 = self.tf_graph.hnodes
+        hnodes2 = self.tf_graph.hnodes2
         s = featdim*hnodes
         s2 = s + hnodes*hnodes2
         s3 = s2 + hnodes2*outdim
@@ -175,18 +180,18 @@ def main():
         return np.random.normal(0, scale=0.01, size=shape).flatten()
 
     dtype = 'float64'
-    device = 'gpu'
+    device = 'cpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 1000
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
 
     # like in linear regression, we need a shared variable weight matrix for logistic regression
-    hnodes = 10 #625
+    hnodes = 100 #625
     hnodes2 = 10
     w_h = init_weights([784, hnodes])
     w_h2 = init_weights([hnodes, hnodes2])
-    w_o = init_weights([hnodes, 10])
+    w_o = init_weights([hnodes2, 10])
     w = np.concatenate((w_h, w_h2, w_o))
     b_h = np.ones(hnodes)*0.1
     b_h2 = np.ones(hnodes2)*0.1
@@ -199,7 +204,7 @@ def main():
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e, np.linalg.norm(grad))
 
     results = minimize(potTF, weights)
-    # print potTF.test_model(np.array(results.coords), teX, teY)
+    print potTF.test_model(np.array(results.coords), teX, teY)
 
     # from pele.transition_states import findLowestEigenVector, analyticalLowestEigenvalue
     # res = findLowestEigenVector(np.array(results.coords), potTF, orthogZeroEigs=None, iprint=1, tol=1e-6)
