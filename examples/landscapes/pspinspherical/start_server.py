@@ -3,14 +3,14 @@ e.g. run python start_server.py 5 10 --server-name example --host nemesis.ch.pri
 """
 
 import argparse
-import socket
 import sys
-
+import socket
 import Pyro4
 
-from learnscapes.systems.pspin_spherical_system import  MeanFieldPSpinSphericalSystem
+from learnscapes.utils import pick_unused_port, write_server_uri
+from examples.landscapes.pspinspherical import create_system, get_database_params_server
 from pele.concurrent import ConnectServer
-from pele.storage import Database
+
 
 # note: the default serializer that Pyro4 uses does not know how to
 # serialize numpy arrays so we use pickle instead.
@@ -21,67 +21,6 @@ Pyro4.config.SERIALIZER = 'pickle'
 Pyro4.config.SERIALIZERS_ACCEPTED.add('pickle')
 Pyro4.config.SERVERTYPE= 'multiplex'
 sys.excepthook = Pyro4.util.excepthook
-
-def pick_unused_port():
-    """
-    pick an unused port number
-
-    Returns
-    -------
-    port: int
-        free port number
-    Notes
-    -----
-    this does not guarantee that the port is actually free, in the short time window
-    between when the port is identified as free and it is actually bound to, the port
-    can be taken by another process
-    """
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('localhost', 0))
-    addr, port = s.getsockname()
-    s.close()
-    return port
-
-def get_server_uri(nspins, p):
-    with open('server_uri_pspin_spherical_p{}_N{}.uri'.format(p,nspins)) as f:
-        uri = [line for line in f][0]
-    assert uri[:5] == "PYRO:"
-    return uri
-
-def write_server_uri(server_name, hostname, port, nspins, p):
-    uri = "PYRO:%s@%s:%d" % (server_name, hostname, port)
-    with open('server_uri_pspin_spherical_p{}_N{}.uri'.format(p,nspins),'w') as out_server_uri:
-        out_server_uri.write(uri)
-    return uri
-
-def create_system(nspins, p, interactions, dtype='float32', device='gpu'):
-    system = MeanFieldPSpinSphericalSystem(nspins, p=p, interactions=interactions,
-                                           dtype=dtype, device=device)
-    return system
-
-def _get_database_params(dbname):
-    db = Database(dbname, createdb=False)
-    interactions = db.get_property("interactions").value()
-    db_nspins = db.get_property("nspins").value()
-    db_p = db.get_property("p").value()
-    params = (db_nspins, db_p, interactions)
-    return db, params
-
-def get_database_params_worker(nspins, p):
-    db, (db_nspins, db_p, interactions) = _get_database_params("pspin_spherical_p{}_N{}.sqlite".format(p,nspins))
-    #close this SQLAlchemy session
-    db.session.close()
-    #check that parameters match
-    assert db_nspins == nspins
-    assert db_p == p
-    return interactions
-
-def get_database_params_server(nspins, p):
-    db, (db_nspins, db_p, interactions) = _get_database_params("pspin_spherical_p{}_N{}.sqlite".format(p,nspins))
-    #check that parameters match
-    assert db_nspins == nspins
-    assert db_p == p
-    return db, interactions
 
 def main():
     parser = argparse.ArgumentParser(description="dispatcher queue")
@@ -100,7 +39,7 @@ def main():
 
     #deal with existing database (if calculations has to be restarted)
     try:
-        db, interactions = get_database_params_server(nspins, p)
+        db, interactions = get_database_params_server(dbname, nspins, p)
         print "Warning: database {} already exists, using the already existing database".format(dbname)
     except IOError:
         db = None
@@ -126,7 +65,8 @@ def main():
                                     host=host, port=port)
 
     print "printing server uri..."
-    uri = write_server_uri(server_name, host, port, nspins, p)
+    fname = 'server_uri_pspin_spherical_p{}_N{}.uri'.format(p,nspins)
+    uri = write_server_uri(fname, server_name, host, port, nspins, p)
     print "done"
 
     if db.number_of_minima() == 0:

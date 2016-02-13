@@ -1,6 +1,7 @@
 import argparse
 from pele.concurrent import BasinhoppingWorker
-from start_server import create_system, get_server_uri, get_database_params_worker
+from examples.landscapes.pspinspherical import create_system, get_database_params_worker
+from learnscapes.utils import get_server_uri
 
 def main():
     parser = argparse.ArgumentParser(description="connect worker queue")
@@ -12,10 +13,12 @@ def main():
     nspins = args.nspins
     p = args.p
 
-    interactions = get_database_params_worker(nspins, p)
+    dbname = "pspin_spherical_p{}_N{}.sqlite".format(p,nspins)
+    interactions = get_database_params_worker(dbname, nspins, p)
     system = create_system(nspins, p, interactions)
 
-    uri = get_server_uri(nspins, p)
+    fname = 'server_uri_pspin_spherical_p{}_N{}.uri'.format(p,nspins)
+    uri = get_server_uri(fname, nspins, p)
     worker = BasinhoppingWorker(uri, system=system)
     worker.run(args.nsteps)
 
