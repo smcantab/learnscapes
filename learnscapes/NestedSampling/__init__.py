@@ -1,0 +1,1 @@
+from _ns_potential import NSPotential
