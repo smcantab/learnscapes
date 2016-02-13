@@ -75,7 +75,7 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
 
 class MeanFieldPSpinSphericalSystem(BaseSystem):
-    def __init__(self, nspins, p=3, interactions=None, dtype='float32', device='gpu'):
+    def __init__(self, nspins, p=3, interactions=None, dtype='float64', device='cpu'):
         BaseSystem.__init__(self)
         self.nspins = nspins
         self.p = p
@@ -99,8 +99,8 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         params.structural_quench_params.tol = 1e-5
         params.structural_quench_params.maxstep = self.nspins
         params.structural_quench_params.M = 4
-        params.structural_quench_params.iprint=1
-        params.structural_quench_params.verbosity=5
+        params.structural_quench_params.iprint=100
+        params.structural_quench_params.verbosity=0
 
         params.database.overwrite_properties = False
         
@@ -108,6 +108,9 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         params.basinhopping.temperature = 10000
         
         tsparams = params.double_ended_connect.local_connect_params.tsSearchParams
+
+
+        
         tsparams.hessian_diagonalization = False
 
     def get_system_properties(self):
@@ -140,7 +143,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
         return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
 
-    def get_potential(self, dtype='float32', device='gpu'):
+    def get_potential(self, dtype='float64', device='cpu'):
         try:
             return self.pot
         except AttributeError:

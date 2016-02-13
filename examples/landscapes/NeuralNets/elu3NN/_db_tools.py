@@ -4,7 +4,7 @@ from learnscapes.utils import isClose
 import numpy as np
 
 def create_system(x_train_data, y_train_data, hnodes, hnodes2,
-                  reg=0, scale=1, dtype='float32', device='cpu'):
+                  reg=0, scale=1, dtype='float64', device='cpu'):
     system = Elu3NNSystem(x_train_data, y_train_data, hnodes, hnodes2,
                           reg=reg, scale=scale, dtype=dtype, device=device)
     return system
