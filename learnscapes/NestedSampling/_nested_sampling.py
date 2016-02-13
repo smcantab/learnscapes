@@ -9,13 +9,14 @@ def random_displace(x, stepsize):
     return x
 
 class NestedSampling(object):
-    def __init__(self, lsPotential, nreplicas=10, mciter=10, nproc=1, verbose=False):
+    def __init__(self, lsPotential, takeStep=random_displace, acceptTest=None,
+                 nreplicas=10, mciter=10, nproc=1, verbose=False):
         self.mciter, self.nreplicas = mciter, nreplicas
         self.nproc, self.verbose = nproc, verbose
-        self.pot = NSPotential(lsPotential)
-        self.mcrunner = MonteCarloWalker(self.pot, takestep=random_displace,
-                                         accept_test=None, mciter=mciter)
-        self.ns = ns(self.pot, self.nreplicas, self.mcrunner,
+        pot = NSPotential(lsPotential)
+        mcrunner = MonteCarloWalker(pot, takestep=takeStep,
+                                    accept_test=acceptTest, mciter=self.mciter)
+        self.ns = ns(pot, self.nreplicas, mcrunner,
                      nproc=self.nproc, verbose=self.verbose)
 
     def run(self, label="ns_out", etol=1e-5, maxiter=None, iprint_replicas=1000):
