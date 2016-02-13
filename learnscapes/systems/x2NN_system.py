@@ -5,7 +5,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 from pele.takestep import RandomCluster, RandomDisplacement
 from pele.storage import Database
 from learnscapes.NeuralNets import DoubleLogisticRegressionPotential, Elu2NNPotential
-from learnscapes.NeuralNets import NNBaseSystem
+from learnscapes.systems import NNBaseSystem
 
 
 class Mlp3System(NNBaseSystem):

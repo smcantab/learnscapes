@@ -184,11 +184,11 @@ def main():
     device = 'cpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-    bs = 1000
+    bs = 10
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
 
     # like in linear regression, we need a shared variable weight matrix for logistic regression
-    hnodes = 100 #625
+    hnodes = 10 #625
     hnodes2 = 10
     w_h = init_weights([784, hnodes])
     w_h2 = init_weights([hnodes, hnodes2])

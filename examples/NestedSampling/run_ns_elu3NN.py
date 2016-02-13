@@ -1,7 +1,7 @@
 from __future__ import division
 import argparse
 from tensorflow.examples.tutorials.mnist import input_data
-from learnscapes.NestedSampling import NestedSampling, NSPotential
+from learnscapes.NestedSampling import NestedSampling
 from learnscapes.NeuralNets import Elu3NNPotential
 
 def main():

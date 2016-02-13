@@ -4,7 +4,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 from pele.storage import Database
 from learnscapes.NeuralNets import Elu3NNPotential
-from learnscapes.NeuralNets import NNBaseSystem
+from learnscapes.systems import NNBaseSystem
 
 
 class Elu3NNSystem(NNBaseSystem):

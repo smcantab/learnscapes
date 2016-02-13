@@ -2,17 +2,17 @@
 e.g. run python start_server.py 5 10 --server-name example --host nemesis.ch.private.cam.ac.uk
 """
 
-import Pyro4
 import argparse
 import socket
 import sys
-import socket
-import os
-from pele.storage import Database
-from pspin_spherical_system import  MeanFieldPSpinSphericalSystem
-from pele.concurrent import ConnectServer
 
-# note: the default serializer that Pyro4 uses does not know how to 
+import Pyro4
+
+from learnscapes.systems.pspin_spherical_system import  MeanFieldPSpinSphericalSystem
+from pele.concurrent import ConnectServer
+from pele.storage import Database
+
+# note: the default serializer that Pyro4 uses does not know how to
 # serialize numpy arrays so we use pickle instead.
 # pickle introduces a security risk, but for this example we
 # are listening only on localhost, so it is probably OK

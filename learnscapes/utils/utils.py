@@ -2,10 +2,12 @@ import cmath
 import numpy as np
 
 def select_device_simple(dev="cpu"):
-    if dev == "cpu":
+    if dev.lower() == "cpu":
         return "/cpu:0"
-    else:
+    elif dev.lower() == 'gpu':
         return "/gpu:0"
+    else:
+        return dev
 
 def dist(x1, x2):
     return np.linalg.norm(x1 - x2)
