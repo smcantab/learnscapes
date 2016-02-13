@@ -1,6 +1,5 @@
 from __future__ import division
 import argparse
-from tensorflow.examples.tutorials.mnist import input_data
 from examples.landscapes.NeuralNets.elu3NN import create_system
 from learnscapes.utils import database_stats, run_double_ended_connect
 
@@ -34,14 +33,17 @@ def main():
     connect, connect_method = args.connect, args.connect_method
 
     if model == 'mnist':
+        from tensorflow.examples.tutorials.mnist import input_data
         data = input_data.read_data_sets("MNIST_data/", one_hot=True)
+    else:
+        raise NotImplementedError
 
     dsize = len(data.train.images)
     trX, trY = data.train.images[::int(dsize/ntrain)], data.train.labels[::int(dsize/ntrain)]
     teX, teY = data.test.images, data.test.labels
 
     system = create_system(trX, trY, hnodes, hnodes2, reg=reg, scale=scale, dtype=dtype, device=device)
-    db = system.create_database("{}_mnist_h{}_h2{}_p{}_r{}.sqlite".format(system.name, hnodes, hnodes2, ntrain, reg))
+    db = system.create_database("{}_{}_h{}_h2{}_p{}_r{}.sqlite".format(system.name, model, hnodes, hnodes2, ntrain, reg))
 
     #now actually run the computattion
     fname = None
@@ -49,7 +51,7 @@ def main():
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(bh_niter)
     if connect:
-        fname = "{}_mnist_h{}_h2{}_p{}_r{}.dg.pdf".format(system.name, hnodes, hnodes2, ntrain, reg)
+        fname = "{}_{}_h{}_h2{}_p{}_r{}.dg.pdf".format(system.name, model, hnodes, hnodes2, ntrain, reg)
         run_double_ended_connect(system, db, strategy=connect_method)
 
     database_stats(system, db, teX, teY, fname=fname)
