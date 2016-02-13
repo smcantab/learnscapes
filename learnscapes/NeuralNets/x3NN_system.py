@@ -72,7 +72,7 @@ def main():
     hnodes2 = 10
     system = Elu3NNSystem(trX, trY, hnodes, hnodes2, reg=reg, scale=scale, device='cpu')
     db = system.create_database("{}_mnist_h{}_h2{}_p{}_r{}.sqlite".format(system.name, hnodes, hnodes2, bs, reg))
-    bh = True
+    bh = False
 
     if bh:
         # bh = system.get_basinhopping(database=db, outstream=None)

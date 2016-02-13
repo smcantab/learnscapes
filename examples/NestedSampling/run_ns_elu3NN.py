@@ -1,8 +1,7 @@
 from __future__ import division
 import argparse
-import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data
-from learnscapes.NestedSampling import NestedSampling
+from learnscapes.NestedSampling import NestedSampling, NSPotential
 from learnscapes.NeuralNets import Elu3NNPotential
 
 def main():
@@ -19,7 +18,7 @@ def main():
     # NN variables
     parser.add_argument("--model", type=str, help="model on which to train the NN: "
                         "(1) MNIST", default='mnist')
-    parser.add_argument("--ntrain", type=int, help="number of training input nodes", default=10)
+    parser.add_argument("--ntrain", type=int, help="number of training input nodes", default=1000)
     parser.add_argument("--hnodes", type=int, help="number of hidden nodes in first layer", default=10)
     parser.add_argument("--hnodes2", type=int, help="number of hidden nodes in second layer", default=10)
     parser.add_argument("--l2reg", type=float, help="l2 regularization constant", default=0)
@@ -28,6 +27,7 @@ def main():
     parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='cpu')
 
     args = parser.parse_args()
+    print args
     # NN parameters
     model, ntrain = args.model.lower(), args.ntrain
     reg, scale = args.l2reg, args.scale
@@ -49,11 +49,13 @@ def main():
     trX, trY = data.train.images[::int(dsize/ntrain)], data.train.labels[::int(dsize/ntrain)]
     teX, teY = data.test.images, data.test.labels
 
-    pot = Elu3NNPotential(trX, trY, hnodes, hnodes2, reg=reg, scale=scale, dtype=dtype, device=device)
-    ns = NestedSampling(pot, nreplicas=nreplicas, mciter=mciter, nproc=nproc, verbose=verbose)
+    pot = Elu3NNPotential(trX, trY, hnodes, hnodes2, reg=reg, dtype=dtype, device=device)
+    ns = NestedSampling(pot, scale=scale, nreplicas=nreplicas, mciter=mciter, nproc=nproc, verbose=verbose)
 
+    #now actually run the computattion
     ns.run(label=label, etol=etol, maxiter=None, iprint_replicas=1000)
     lowest_replica = ns.ns.replicas[-1]
-    print pot.test_model(lowest_replica.x)
+    print pot.test_model(lowest_replica.x, teX, teY)
 
-
+if __name__ == "__main__":
+    main()

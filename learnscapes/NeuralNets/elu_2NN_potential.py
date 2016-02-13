@@ -51,6 +51,7 @@ class Elu2NNPotential(DoubleLogisticRegressionPotential):
                 init = tf.initialize_all_variables()
                 self.session.run(init)
                 self.g.finalize()   # this guarantees that no new ops are added to the graph
+        self.ndim = self.tf_graph.ndim
 
 def main():
     np.random.seed(42)
