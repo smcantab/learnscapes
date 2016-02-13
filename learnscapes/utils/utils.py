@@ -70,18 +70,22 @@ def isCloseArray(a, b, rel_tol=1e-9, abs_tol=0.0):
     return np.allclose(a, b, rtol=rel_tol, atol=abs_tol, equal_nan=False)
 
 
-def database_stats(system, db, x_test, y_test, fname='dg.pdf', **kwargs):
+def database_stats(system, db, x_test, y_test, fname=None, **kwargs):
 
     pot = system.get_potential()
 
     print "Nminima = ", len(db.minima())
     print "Nts = ", len(db.transition_states())
 
-    make_disconnectivity_graph(system, db, x_test, y_test, fname=fname, **kwargs)
+    if fname is not None:
+        make_disconnectivity_graph(system, db, x_test, y_test, fname=fname, **kwargs)
 
     print "Minimum Energy, RMS grad: "
     for m in db.minima():
-        print m.energy, np.linalg.norm(pot.getEnergyGradient(m.coords)[1]/np.sqrt(m.coords.size))
+        print "E: {} rms: {} accuracy: {}".format(m.energy,
+                                                  np.linalg.norm(pot.getEnergyGradient(
+                                                      m.coords)[1]/np.sqrt(m.coords.size)),
+                                                  pot.test_model(m.coords, x_test, y_test))
 
 
 def run_double_ended_connect(system, database, strategy='random'):

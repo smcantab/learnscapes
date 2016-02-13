@@ -21,7 +21,6 @@ class Elu3NNSystem(NNBaseSystem):
         return dict(potential="Elu3NNPotential",
                     x_train_data=self.x_train_data,
                     y_train_data=self.y_train_data,
-                    scale=self.scale,
                     reg=self.reg,
                     hnodes=self.hnodes,
                     hnodes2=self.hnodes2,
@@ -41,7 +40,7 @@ class Elu3NNSystem(NNBaseSystem):
     #     """
     #     return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-5, abs_tol=1e-7, debug=False)
 
-def run_gui_db(dbname="regression_logit_mnist.sqlite", device='cpu'):
+def run_gui_db(dbname="regression_logit_mnist.sqlite", scale=1, device='cpu'):
     from pele.gui import run_gui
     try:
         db = Database(dbname, createdb=False)
@@ -50,10 +49,9 @@ def run_gui_db(dbname="regression_logit_mnist.sqlite", device='cpu'):
         hnodes=db.get_property("hnodes").value(),
         hnodes2=db.get_property("hnodes2").value(),
         reg=db.get_property("reg").value(),
-        scale=db.get_property("scale").value(), #remove this line (it might break existent database reads)
     except IOError:
         pass
-    hnodes, hnodes2, reg, scale = hnodes[0], hnodes2[0], reg[0], scale[0]
+    hnodes, hnodes2, reg = hnodes[0], hnodes2[0], reg[0]
     x_train_data, y_train_data = np.array(np.array(x_train_data)[0,:,:]), np.array(np.array(y_train_data)[0,:,:])
     print np.array(x_train_data).shape, np.array(y_train_data).shape
     system = Elu3NNSystem(x_train_data, y_train_data, hnodes, hnodes2, reg=reg, scale=scale, device=device)
@@ -80,7 +78,7 @@ def main():
         run_double_ended_connect(system, db, strategy='random')
         run_double_ended_connect(system, db, strategy='gmin')
         # database_stats(system, db, teX, teY,
-        #                fname="{}_mnist_h{}_h2{}_p{}_r{}.sqlite".format(system.name, hnodes, hnodes2, bs, reg))
+        #                fname="{}_mnist_h{}_h2{}_p{}_r{}.dg.pdf".format(system.name, hnodes, hnodes2, bs, reg))
 
     if not bh:
         run_gui_db(dbname="{}_mnist_h{}_h2{}_p{}_r{}.sqlite".format(system.name, hnodes, hnodes2, bs, reg),

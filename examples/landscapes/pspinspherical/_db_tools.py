@@ -1,4 +1,4 @@
-from learnscapes.systems.pspin_spherical_system import  MeanFieldPSpinSphericalSystem
+from learnscapes.systems import  MeanFieldPSpinSphericalSystem
 from pele.storage import Database
 
 def create_system(nspins, p, interactions, dtype='float32', device='gpu'):
