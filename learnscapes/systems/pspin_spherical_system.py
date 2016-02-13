@@ -109,8 +109,6 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         
         tsparams = params.double_ended_connect.local_connect_params.tsSearchParams
 
-
-        
         tsparams.hessian_diagonalization = False
 
     def get_system_properties(self):
