@@ -36,3 +36,4 @@ def get_database_params_server(dbname, hnodes, hnodes2, reg):
     assert db_hnodes2 == hnodes2
     assert isClose(db_reg, reg)
     return db, x_train_data, y_train_data
+

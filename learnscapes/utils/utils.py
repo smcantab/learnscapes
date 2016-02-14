@@ -1,5 +1,7 @@
 import cmath
 import numpy as np
+from pele.optimize import lbfgs_cpp
+from pele.storage import Minimum
 
 def select_device_simple(dev="cpu"):
     if dev.lower() == "cpu":
@@ -110,3 +112,19 @@ def make_disconnectivity_graph(system, database, x_test, y_test, fname='dg.pdf',
     dg.color_by_value(minimum_to_testerror, colormap=plt.cm.ScalarMappable(cmap='YlGnBu').get_cmap())
     dg.plot(linewidth=1.5)
     plt.savefig(fname)
+
+def refine_database(system, db, tol=1e-9, maxstep=1, iprint=100):
+    """
+    refine the minima in the database to an improved tolerance
+    :param tol:
+    :return:
+    """
+    assert len(db.transition_states()) == 0, "refine databse, the database is already " \
+                                             "populated with transiton states"
+    pot = system.get_potential()
+    for m in db.minima():
+        res = lbfgs_cpp(m.coords, pot, maxstep=maxstep, tol=tol, iprint=iprint)
+        if res.success:
+            new = Minimum(res.energy, res.coords)
+            db.removeMinimum(m)
+            db.addMinimum(new)
