@@ -113,7 +113,7 @@ def make_disconnectivity_graph(system, database, x_test, y_test, fname='dg.pdf',
     dg.plot(linewidth=1.5)
     plt.savefig(fname)
 
-def refine_database(system, db, tol=1e-9, maxstep=1, iprint=100):
+def refine_database(system, db, tol=1e-9, nsteps=int(1e5), maxstep=1, iprint=100):
     """
     refine the minima in the database to an improved tolerance
     :param system: system class
@@ -127,7 +127,6 @@ def refine_database(system, db, tol=1e-9, maxstep=1, iprint=100):
                                              "populated with transiton states"
     pot = system.get_potential()
     for m in db.minima():
-        res = lbfgs_cpp(m.coords, pot, maxstep=maxstep, tol=tol, iprint=iprint)
-        if res.success:
-            db.removeMinimum(m)
-            db.addMinimum(res.energy, res.coords)
+        res = lbfgs_cpp(m.coords, pot, nsteps=nsteps, maxstep=maxstep, tol=tol, iprint=iprint)
+        db.removeMinimum(m)
+        db.addMinimum(res.energy, res.coords)

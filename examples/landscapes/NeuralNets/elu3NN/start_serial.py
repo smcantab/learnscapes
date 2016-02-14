@@ -51,7 +51,7 @@ def main():
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(bh_niter)
         print "\n refining database \n"
-        refine_database(system, db, tol=1e-11, maxstep=1, iprint=100)
+        refine_database(system, db, tol=1e-11, nsteps=int(1e5), maxstep=1, iprint=100)
 
     if connect:
         fname = "{}_{}_h{}_h2{}_p{}_r{}.dg.pdf".format(system.name, model, hnodes, hnodes2, ntrain, reg)
