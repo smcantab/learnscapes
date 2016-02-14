@@ -170,7 +170,7 @@ def main():
     def minimize(pot, coords):
         print "shape", coords.shape
         print "start energy", pot.getEnergy(coords)
-        results = lbfgs_cpp(coords, pot, M=4, nsteps=1e5, tol=1e-5, iprint=1, verbosity=1, maxstep=10)
+        results = lbfgs_cpp(coords, pot, M=4, nsteps=1e5, tol=1e-8, iprint=1, verbosity=1, maxstep=10)
         print "quenched energy", results.energy
         print "E: {}, nsteps: {}".format(results.energy, results.nfev)
         if results.success:
@@ -184,7 +184,7 @@ def main():
     device = 'cpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
-    bs = 10
+    bs = 100
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
 
     # like in linear regression, we need a shared variable weight matrix for logistic regression
