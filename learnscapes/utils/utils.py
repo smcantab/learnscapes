@@ -116,7 +116,11 @@ def make_disconnectivity_graph(system, database, x_test, y_test, fname='dg.pdf',
 def refine_database(system, db, tol=1e-9, maxstep=1, iprint=100):
     """
     refine the minima in the database to an improved tolerance
-    :param tol:
+    :param system: system class
+    :param db: database
+    :param tol: rms tolerance for the minimizer
+    :param maxstep: maximum stepsize for the minimizer
+    :param iprint: frequency with which minimizer prints
     :return:
     """
     assert len(db.transition_states()) == 0, "refine databse, the database is already " \
@@ -125,6 +129,5 @@ def refine_database(system, db, tol=1e-9, maxstep=1, iprint=100):
     for m in db.minima():
         res = lbfgs_cpp(m.coords, pot, maxstep=maxstep, tol=tol, iprint=iprint)
         if res.success:
-            new = Minimum(res.energy, res.coords)
             db.removeMinimum(m)
-            db.addMinimum(new)
+            db.addMinimum(res.energy, res.coords)

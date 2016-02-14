@@ -33,7 +33,7 @@ class NNBaseSystem(BaseSystem):
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
 
-        params.structural_quench_params.tol = 1e-5
+        params.structural_quench_params.tol = 1e-8
         params.structural_quench_params.maxstep = 1
         params.structural_quench_params.M = 4
         params.structural_quench_params.iprint=100
@@ -46,7 +46,7 @@ class NNBaseSystem(BaseSystem):
 
         lcp.tsSearchParams.hessian_diagonalization = False
 
-        # params.database.accuracy = 1e-5
+        params.database.accuracy = 1e-5
 
     def get_mindist(self):
         return lambda x1, x2 : mindist_1d(x1, x2)

@@ -96,7 +96,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         nebparams.adaptive_niter = True
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
-        params.structural_quench_params.tol = 1e-5
+        params.structural_quench_params.tol = 1e-6
         params.structural_quench_params.maxstep = self.nspins
         params.structural_quench_params.M = 4
         params.structural_quench_params.iprint=100
