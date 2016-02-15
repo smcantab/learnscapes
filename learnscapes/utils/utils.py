@@ -101,6 +101,8 @@ def run_double_ended_connect(system, database, strategy='random'):
 
 
 def make_disconnectivity_graph(system, database, x_test, y_test, fname='dg.pdf', **kwargs):
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from pele.utils.disconnectivity_graph import DisconnectivityGraph, database2graph
     graph = database2graph(database)
