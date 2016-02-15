@@ -107,7 +107,10 @@ def make_disconnectivity_graph(system, database, x_test, y_test, fname='dg.pdf',
     from pele.utils.disconnectivity_graph import DisconnectivityGraph, database2graph
     graph = database2graph(database)
     dg = DisconnectivityGraph(graph, **kwargs)
-    dg.calculate()
+    try:
+        dg.calculate()
+    except Exception, e:
+        print "make_disconnectivity_graph caught error: ", e
 
     # color DG points by test-set error
     minimum_to_testerror = lambda m: system.pot.test_model(m.coords, x_test, y_test)
