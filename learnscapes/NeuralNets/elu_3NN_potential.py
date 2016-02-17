@@ -13,7 +13,7 @@ class Elu3NNGraph(BaseMLGraph):
     this is a 3-layer modern NN that uses exponential activation functions
     :param hnodes: number of hidden nodes
     """
-    def __init__(self, x_train_data, y_train_data, hnodes, hnodes2, reg=0, dtype='float64'):
+    def __init__(self, x_train_data, y_train_data, hnodes, hnodes2, reg=0, dtype='float32'):
         super(Elu3NNGraph, self).__init__(x_train_data, y_train_data, reg=reg,dtype=dtype)
         self.hnodes = hnodes
         self.hnodes2 = hnodes2
@@ -31,8 +31,9 @@ class Elu3NNGraph(BaseMLGraph):
         """
         self.g = graph
         with self.g.name_scope('embedding'):
-            self.x = tf.constant(self.py_x, dtype=self.dtype, name='x_training_data')
-            self.y = tf.constant(self.py_y, dtype=self.dtype, name='y_training_data')
+            self.x = tf.Variable(tf.constant(self.py_x, dtype=self.dtype, name='x_training_data'))
+            self.y = tf.Variable(tf.constant(self.py_y, dtype=self.dtype, name='y_training_data'))
+            self.reg = tf.Variable(tf.constant(self.pyreg, dtype=self.dtype))
             self.x_test = tf.placeholder(self.dtype, shape=(None, self.shape[0]), name='x_test_data')
             self.y_test = tf.placeholder(self.dtype, shape=(None, self.shape[1]), name='y_test_data')
             self.w_h = tf.Variable(tf.zeros((self.shape[0], self.hnodes), dtype=self.dtype), name='hidden_layer_weights')
@@ -52,13 +53,13 @@ class Elu3NNGraph(BaseMLGraph):
 
     @property
     def model(self):
-        h = tf.nn.elu(tf.matmul(self.x, self.w_h) + self.b_h)
-        h2 = tf.nn.elu(tf.matmul(h, self.w_h2) + self.b_h2)
-        return tf.matmul(h2, self.w_o) + self.b_o
+        h = tf.nn.elu(tf.add(tf.matmul(self.x, self.w_h), self.b_h))
+        h2 = tf.nn.elu(tf.add(tf.matmul(h, self.w_h2), self.b_h2))
+        return tf.add(tf.matmul(h2, self.w_o), self.b_o)
 
     @property
     def regularization(self):
-        return self.reg * (tf.nn.l2_loss(self.w_h) + tf.nn.l2_loss(self.w_h2) + tf.nn.l2_loss(self.w_o))
+        return tf.mul(self.reg, tf.add_n([tf.nn.l2_loss(self.w_h), tf.nn.l2_loss(self.w_h2), tf.nn.l2_loss(self.w_o)]))
 
     @property
     def compute_gradient(self):
@@ -68,9 +69,9 @@ class Elu3NNGraph(BaseMLGraph):
     def predict(self):
         """this tests the models, at predict time, evaluate the argmax of the logistic regression
         """
-        h = tf.nn.elu(tf.matmul(self.x_test, self.w_h) + self.b_h)
-        h2 = tf.nn.elu(tf.matmul(h, self.w_h2) + self.b_h2)
-        model_test = tf.matmul(h2, self.w_o) + self.b_o
+        h = tf.nn.elu(tf.add(tf.matmul(self.x_test, self.w_h), self.b_h))
+        h2 = tf.nn.elu(tf.add(tf.matmul(h, self.w_h2), self.b_h2))
+        model_test = tf.add(tf.matmul(h2, self.w_o), self.b_o)
         return tf.argmax(model_test, 1)
 
 
@@ -78,7 +79,7 @@ class Elu3NNPotential(BasePotential):
     """
     potential that can be used with pele toolbox
     """
-    def __init__(self, x_train_data, y_train_data, hnodes, hnodes2, reg=0, dtype='float64', device='cpu'):
+    def __init__(self, x_train_data, y_train_data, hnodes, hnodes2, reg=0, dtype='float32', device='cpu'):
         self.device = select_device_simple(dev=device)
         # the following scheme needs to be followed to avoid repeated addition of ops to
         # the graph
@@ -170,7 +171,7 @@ def main():
     def minimize(pot, coords):
         print "shape", coords.shape
         print "start energy", pot.getEnergy(coords)
-        results = lbfgs_cpp(coords, pot, M=4, nsteps=1e5, tol=1e-8, iprint=1, verbosity=1, maxstep=10)
+        results = lbfgs_cpp(coords, pot, M=4, nsteps=1e5, tol=1e-9, iprint=1, verbosity=1, maxstep=10)
         print "quenched energy", results.energy
         print "E: {}, nsteps: {}".format(results.energy, results.nfev)
         if results.success:
@@ -178,17 +179,17 @@ def main():
             return results
 
     def init_weights(shape):
-        return np.random.normal(0, scale=0.01, size=shape).flatten()
+        return np.random.normal(0, scale=1, size=shape).flatten()
 
-    dtype = 'float64'
-    device = 'cpu'
+    dtype = 'float32'
+    device = 'gpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 100
     trX, trY, teX, teY = mnist.train.images[:bs], mnist.train.labels[:bs], mnist.test.images, mnist.test.labels
 
     # like in linear regression, we need a shared variable weight matrix for logistic regression
-    hnodes = 10 #625
+    hnodes = 10
     hnodes2 = 10
     w_h = init_weights([784, hnodes])
     w_h2 = init_weights([hnodes, hnodes2])
@@ -201,11 +202,16 @@ def main():
     weights = np.append(w, b)
     potTF = Elu3NNPotential(trX, trY, hnodes, hnodes2, dtype=dtype, device=device)
 
-    e, grad = potTF.getEnergyGradient(weights)
+    import time
+    start = time.time()
+    for _ in xrange(2000):
+        e, grad = potTF.getEnergyGradient(weights)
+    end = time.time()
+    print "time", end - start
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e, np.linalg.norm(grad))
 
-    results = minimize(potTF, weights)
-    print potTF.test_model(np.array(results.coords), teX, teY)
+    # results = minimize(potTF, weights)
+    # print potTF.test_model(np.array(results.coords), teX, teY)
 
     # from pele.transition_states import findLowestEigenVector, analyticalLowestEigenvalue
     # res = findLowestEigenVector(np.array(results.coords), potTF, orthogZeroEigs=None, iprint=1, tol=1e-6)

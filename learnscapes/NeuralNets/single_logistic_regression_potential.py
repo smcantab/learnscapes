@@ -23,8 +23,9 @@ class LogisticRegressionGraph(BaseMLGraph):
         """
         self.g = graph
         with self.g.name_scope('embedding'):
-            self.x = tf.constant(self.py_x, dtype=self.dtype, name='x_training_data')
-            self.y = tf.constant(self.py_y, dtype=self.dtype, name='y_training_data')
+            self.x = tf.Variable(tf.constant(self.py_x, dtype=self.dtype, name='x_training_data'))
+            self.y = tf.Variable(tf.constant(self.py_y, dtype=self.dtype, name='y_training_data'))
+            self.reg = tf.Variable(tf.constant(self.pyreg, dtype=self.dtype))
             self.x_test = tf.placeholder(self.dtype, shape=(None, self.shape[0]), name='x_test_data')
             self.y_test = tf.placeholder(self.dtype, shape=(None, self.shape[1]), name='y_test_data')
             self.w = tf.Variable(tf.zeros(self.shape, dtype=self.dtype), name='weights')
@@ -40,11 +41,11 @@ class LogisticRegressionGraph(BaseMLGraph):
 
     @property
     def model(self):
-        return tf.matmul(self.x, self.w) + self.b
+        return tf.add(tf.matmul(self.x, self.w), self.b)
 
     @property
     def regularization(self):
-        return self.reg * tf.nn.l2_loss(self.w)
+        return tf.mul(self.reg, tf.nn.l2_loss(self.w))
 
     @property
     def compute_gradient(self):
@@ -54,7 +55,7 @@ class LogisticRegressionGraph(BaseMLGraph):
     def predict(self):
         """this tests the models, at predict time, evaluate the argmax of the logistic regression
         """
-        model_test = tf.matmul(self.x_test, self.w) + self.b
+        model_test = tf.add(tf.matmul(self.x_test, self.w), self.b)
         return tf.argmax(model_test, 1)
 
 

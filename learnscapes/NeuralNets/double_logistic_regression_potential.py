@@ -29,8 +29,9 @@ class DoubleLogisticRegressionGraph(BaseMLGraph):
         """
         self.g = graph
         with self.g.name_scope('embedding'):
-            self.x = tf.constant(self.py_x, dtype=self.dtype, name='x_training_data')
-            self.y = tf.constant(self.py_y, dtype=self.dtype, name='y_training_data')
+            self.x = tf.Variable(tf.constant(self.py_x, dtype=self.dtype, name='x_training_data'))
+            self.y = tf.Variable(tf.constant(self.py_y, dtype=self.dtype, name='y_training_data'))
+            self.reg = tf.Variable(tf.constant(self.pyreg, dtype=self.dtype))
             self.x_test = tf.placeholder(self.dtype, shape=(None, self.shape[0]), name='x_test_data')
             self.y_test = tf.placeholder(self.dtype, shape=(None, self.shape[1]), name='y_test_data')
             self.w_h = tf.Variable(tf.zeros((self.shape[0], self.hnodes), dtype=self.dtype), name='hidden_layer_weights')
@@ -48,12 +49,12 @@ class DoubleLogisticRegressionGraph(BaseMLGraph):
 
     @property
     def model(self):
-        h = tf.nn.sigmoid(tf.matmul(self.x, self.w_h) + self.b_h)
-        return tf.matmul(h, self.w_o) + self.b_o
+        h = tf.nn.sigmoid(tf.add(tf.matmul(self.x, self.w_h), self.b_h))
+        return tf.add(tf.matmul(h, self.w_o), self.b_o)
 
     @property
     def regularization(self):
-        return self.reg * (tf.nn.l2_loss(self.w_h) + tf.nn.l2_loss(self.w_o))
+        return tf.mul(self.reg, tf.add_n([tf.nn.l2_loss(self.w_h), tf.nn.l2_loss(self.w_o)]))
 
     @property
     def compute_gradient(self):
@@ -83,8 +84,8 @@ class DoubleLogisticRegressionGraph(BaseMLGraph):
     def predict(self):
         """this tests the models, at predict time, evaluate the argmax of the logistic regression
         """
-        h = tf.nn.sigmoid(tf.matmul(self.x_test, self.w_h) + self.b_h)
-        model_test = tf.matmul(h, self.w_o) + self.b_o
+        h = tf.nn.sigmoid(tf.add(tf.matmul(self.x_test, self.w_h), self.b_h))
+        model_test = tf.add(tf.matmul(h, self.w_o), self.b_o)
         return tf.argmax(model_test, 1)
 
 

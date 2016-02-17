@@ -15,20 +15,20 @@ class Elu2NNGraph(DoubleLogisticRegressionGraph):
     this is a 2-layer modern NN that uses exponential activation functions
     :param hnodes: number of hidden nodes
     """
-    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float64'):
+    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, dtype='float32'):
         super(Elu2NNGraph, self).__init__(x_train_data, y_train_data, hnodes, reg=reg,dtype=dtype)
 
     @property
     def model(self):
-        h = tf.nn.elu(tf.matmul(self.x, self.w_h) + self.b_h)
-        return tf.matmul(h, self.w_o) + self.b_o
+        h = tf.nn.elu(tf.add(tf.matmul(self.x, self.w_h), self.b_h))
+        return tf.add(tf.matmul(h, self.w_o), self.b_o)
 
     @property
     def predict(self):
         """this tests the models, at predict time, evaluate the argmax of the logistic regression
         """
-        h = tf.nn.elu(tf.matmul(self.x_test, self.w_h) + self.b_h)
-        model_test = tf.matmul(h, self.w_o) + self.b_o
+        h = tf.nn.elu(tf.add(tf.matmul(self.x_test, self.w_h), self.b_h))
+        model_test = tf.add(tf.matmul(h, self.w_o), self.b_o)
         return tf.argmax(model_test, 1)
 
 
@@ -69,7 +69,7 @@ def main():
     def init_weights(shape):
         return np.random.normal(0, scale=0.01, size=shape).flatten()
 
-    dtype = 'float64'
+    dtype = 'float32'
     device = 'cpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)

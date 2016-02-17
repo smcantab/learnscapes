@@ -11,7 +11,7 @@ class BaseMLGraph(object):
         self.dtype = dtype
         self.py_x = np.array(x_train_data)
         self.py_y = np.array(y_train_data)
-        self.reg = reg
+        self.pyreg = reg
         assert self.py_y.shape[0] == self.py_x.shape[0], "dataset sizes mismatch"
         self.shape = (self.py_x.shape[1], self.py_y.shape[1])
 
@@ -31,7 +31,7 @@ class BaseMLGraph(object):
 
     @property
     def regularised_loss(self):
-        return self.loss + self.regularization
+        return tf.add(self.loss, self.regularization)
 
     @property
     def predict(self):

@@ -119,8 +119,8 @@ class MeanFieldPSpinSphericalTF(BasePotential):
         self.g = tf.Graph()
         with self.g.as_default(), self.g.device(self.device):
             self.session = tf.Session(config=tf.ConfigProto(
-                    allow_soft_placement=True,
-                    log_device_placement=False))
+                    allow_soft_placement=False,
+                    log_device_placement=True))
             with self.session.as_default():
                 self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype)(graph=self.g)
                 init = tf.initialize_all_variables()
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     coords = np.random.normal(size=n)
     coords /= np.linalg.norm(coords) / np.sqrt(coords.size)
 
-    potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='cpu')
+    potTF = MeanFieldPSpinSphericalTF(interactions, n, p, dtype=dtype, device='gpu')
 
     e, grad = potTF.getEnergyGradient(coords)
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
