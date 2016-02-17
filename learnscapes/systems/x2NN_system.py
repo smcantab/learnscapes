@@ -9,7 +9,7 @@ from learnscapes.systems import NNBaseSystem
 
 
 class Mlp3System(NNBaseSystem):
-    def __init__(self, x_train_data, y_train_data, hnodes, reg=0.1, scale=1, dtype='float64', device='cpu'):
+    def __init__(self, x_train_data, y_train_data, hnodes, reg=0.1, scale=1, dtype='float32', device='cpu'):
         super(Mlp3System, self).__init__(x_train_data, y_train_data, scale=scale, dtype=dtype, device=device)
         self.hnodes = hnodes
         self.reg = reg
@@ -25,7 +25,7 @@ class Mlp3System(NNBaseSystem):
                     hnodes=self.hnodes,
                     )
 
-    def get_potential(self, dtype='float64', device='cpu'):
+    def get_potential(self, dtype='float32', device='cpu'):
         try:
             return self.pot
         except AttributeError:
@@ -40,7 +40,7 @@ class Mlp3System(NNBaseSystem):
     #     return lambda x1, x2 : compare_exact(x1, x2, rel_tol=1e-5, abs_tol=1e-7, debug=False)
 
 class Elu2NNSystem(Mlp3System):
-    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, scale=1, dtype='float64', device='cpu'):
+    def __init__(self, x_train_data, y_train_data, hnodes, reg=0, scale=1, dtype='float32', device='cpu'):
         super(Elu2NNSystem, self).__init__(x_train_data, y_train_data, hnodes,
                                            scale=scale, reg=reg, dtype=dtype, device=device)
         self.name = 'Elu2NN'
@@ -53,7 +53,7 @@ class Elu2NNSystem(Mlp3System):
                     hnodes=self.hnodes,
                     )
 
-    def get_potential(self, dtype='float64', device='cpu'):
+    def get_potential(self, dtype='float32', device='cpu'):
         try:
             return self.pot
         except AttributeError:

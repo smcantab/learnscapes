@@ -8,7 +8,7 @@ from learnscapes.systems import NNBaseSystem
 
 
 class Elu3NNSystem(NNBaseSystem):
-    def __init__(self, x_train_data, y_train_data, hnodes, hnodes2, reg=0, scale=1, dtype='float64', device='cpu'):
+    def __init__(self, x_train_data, y_train_data, hnodes, hnodes2, reg=0, scale=1, dtype='float32', device='cpu'):
         super(Elu3NNSystem, self).__init__(x_train_data, y_train_data, scale=scale, dtype=dtype, device=device)
         self.hnodes = hnodes
         self.hnodes2 = hnodes2
@@ -26,7 +26,7 @@ class Elu3NNSystem(NNBaseSystem):
                     hnodes2=self.hnodes2,
                     )
 
-    def get_potential(self, dtype='float64', device='cpu'):
+    def get_potential(self, dtype='float32', device='cpu'):
         try:
             return self.pot
         except AttributeError:

@@ -25,7 +25,7 @@ class BasePSpinGraph(object):
     this should not have its own graph or its own section, it defines only the graph
     """
 
-    def __init__(self, interactions, nspins, p, dtype='float64'):
+    def __init__(self, interactions, nspins, p, dtype='float32'):
         self.dtype = dtype
         self.p = p
         self.nspins = nspins
@@ -75,7 +75,7 @@ class BasePSpinGraph(object):
 
 
 class MeanField3SpinGraph(BasePSpinGraph):
-    def __init__(self, interactions, nspins, dtype='float64'):
+    def __init__(self, interactions, nspins, dtype='float32'):
         super(MeanField3SpinGraph, self).__init__(interactions, nspins, 3, dtype=dtype)
 
     @property
@@ -85,7 +85,7 @@ class MeanField3SpinGraph(BasePSpinGraph):
 
 
 class MeanField4SpinGraph(BasePSpinGraph):
-    def __init__(self, interactions, nspins, dtype='float64'):
+    def __init__(self, interactions, nspins, dtype='float32'):
         super(MeanField4SpinGraph, self).__init__(interactions, nspins, 4, dtype=dtype)
 
     @property
@@ -96,7 +96,7 @@ class MeanField4SpinGraph(BasePSpinGraph):
 
 
 class MeanField5SpinGraph(BasePSpinGraph):
-    def __init__(self, interactions, nspins, dtype='float64'):
+    def __init__(self, interactions, nspins, dtype='float32'):
         super(MeanField5SpinGraph, self).__init__(interactions, nspins, 5, dtype=dtype)
 
     @property
@@ -111,7 +111,7 @@ class MeanFieldPSpinSphericalTF(BasePotential):
     """
     the potential has been hardcoded for p=3
     """
-    def __init__(self, interactions, nspins, p, dtype='float64', device='gpu'):
+    def __init__(self, interactions, nspins, p, dtype='float32', device='gpu'):
         self.sqrtN = np.sqrt(nspins)
         self.device = select_device_simple(dev=device)
         # the following scheme needs to be followed to avoid repeated addition of ops to
@@ -161,7 +161,7 @@ if __name__ == "__main__":
         if results.success:
             return [results.coords, results.energy, results.nfev]
 
-    dtype = 'float64'
+    dtype = 'float32'
     n=100
     p=3
     norm = tf.random_normal([n for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)

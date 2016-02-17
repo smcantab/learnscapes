@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--hnodes2", type=int, help="number of hidden nodes in second layer", default=10)
     parser.add_argument("--l2reg", type=float, help="l2 regularization constant", default=0)
     parser.add_argument("--scale", type=float, help="scale for stepsize and random sampling", default=1)
-    parser.add_argument("--dtype", type=str, help="data type (recommended float64)", default='float64')
+    parser.add_argument("--dtype", type=str, help="data type (recommended float32)", default='float32')
     parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='cpu')
     # operations to perform
     parser.add_argument("--bh", type=int, help="number of basin hopping steps to perform", default=0)
@@ -51,7 +51,8 @@ def main():
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(bh_niter)
         print "\n refining database \n"
-        refine_database(system, db, tol=1e-11, nsteps=int(1e5), maxstep=1, iprint=1000)
+        rtol = 1e-8 if dtype == 'float32' else 1e-10
+        refine_database(system, db, tol=rtol, nsteps=int(2.5e4), maxstep=1, iprint=1000)
 
     if connect:
         fname = "{}_{}_h{}_h2{}_p{}_r{}.dg.pdf".format(system.name, model, hnodes, hnodes2, ntrain, reg)

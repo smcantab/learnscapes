@@ -75,7 +75,7 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
 
 class MeanFieldPSpinSphericalSystem(BaseSystem):
-    def __init__(self, nspins, p=3, interactions=None, dtype='float64', device='cpu'):
+    def __init__(self, nspins, p=3, interactions=None, dtype='float32', device='cpu'):
         BaseSystem.__init__(self)
         self.nspins = nspins
         self.p = p
@@ -141,7 +141,7 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
         return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
 
-    def get_potential(self, dtype='float64', device='cpu'):
+    def get_potential(self, dtype='float32', device='cpu'):
         try:
             return self.pot
         except AttributeError:

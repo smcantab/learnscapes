@@ -10,7 +10,7 @@ def main():
     # NN variables
     parser.add_argument("dbname", type=str, help="database name")
     parser.add_argument("--scale", type=float, help="scale for stepsize and random sampling", default=1)
-    parser.add_argument("--dtype", type=str, help="data type (recommended float64)", default='float64')
+    parser.add_argument("--dtype", type=str, help="data type (recommended float32)", default='float32')
     parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='cpu')
 
 

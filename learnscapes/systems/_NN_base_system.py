@@ -33,11 +33,11 @@ class NNBaseSystem(BaseSystem):
         nebparams.adjustk_freq = 10
         nebparams.k = 2000
 
-        params.structural_quench_params.tol = 1e-8
+        params.structural_quench_params.tol = 1e-7
         params.structural_quench_params.maxstep = 1
         params.structural_quench_params.M = 4
-        params.structural_quench_params.iprint=1000
-        params.structural_quench_params.verbosity=0
+        params.structural_quench_params.iprint = 100
+        params.structural_quench_params.verbosity = 0
 
         params.database.overwrite_properties = False
 
