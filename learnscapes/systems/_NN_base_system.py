@@ -22,7 +22,7 @@ class NNBaseSystem(BaseSystem):
         params.takestep.verbose = True
         lcp = params.double_ended_connect.local_connect_params
         lcp.pushoff_params.update(dict(stepmin=0.5))
-        lcp.tsSearchParams.lowestEigenvectorQuenchParams.update(dict(dx=0.5e-3))
+        lcp.tsSearchParams.lowestEigenvectorQuenchParams.update(dict(dx=1e-3, first_order=False))
 
         nebparams = lcp.NEBparams
         # nebparams.image_density = 0.8
@@ -36,7 +36,7 @@ class NNBaseSystem(BaseSystem):
         params.structural_quench_params.tol = 1e-7
         params.structural_quench_params.maxstep = 1
         params.structural_quench_params.M = 4
-        params.structural_quench_params.iprint = 100
+        params.structural_quench_params.iprint = 1000
         params.structural_quench_params.verbosity = 0
 
         params.database.overwrite_properties = False

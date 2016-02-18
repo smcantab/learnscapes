@@ -43,8 +43,8 @@ class BasePSpinGraph(object):
         """
         self.g = graph
         with self.g.name_scope('embedding'):
-            self.prf = tf.constant(self.pyprf, dtype=self.dtype, name='pot_prf')
-            self.interactions = tf.constant(self.pyinteractions, dtype=self.dtype, name='pot_interactions')
+            self.prf = tf.Variable(tf.constant(self.pyprf, dtype=self.dtype, name='pot_prf'))
+            self.interactions = tf.Variable(tf.constant(self.pyinteractions, dtype=self.dtype, name='pot_interactions'))
             self.x = tf.Variable(tf.zeros([self.nspins], dtype=self.dtype), name='x')
         # declaring loss like this makes sure that the full graph is initialised
         with self.g.name_scope('loss'):
@@ -119,7 +119,7 @@ class MeanFieldPSpinSphericalTF(BasePotential):
         self.g = tf.Graph()
         with self.g.as_default(), self.g.device(self.device):
             self.session = tf.Session(config=tf.ConfigProto(
-                    allow_soft_placement=False,
+                    allow_soft_placement=True,
                     log_device_placement=True))
             with self.session.as_default():
                 self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype)(graph=self.g)
