@@ -1,20 +1,21 @@
 from __future__ import division
 import numpy as np
-from learnscapes.NestedSampling import NSPotential
 import nested_sampling
 from nested_sampling import MonteCarloWalker, run_nested_sampling, Replica
+
 
 def random_displace(x, stepsize):
     x += np.random.uniform(low=-stepsize, high=stepsize, size=x.shape)
     return x
 
+
 class NestedSampling(object):
-    def __init__(self, lsPotential, scale=1, takeStep=random_displace,
+    def __init__(self, nsPotential, scale=1, takeStep=random_displace,
                  acceptTest=None, nreplicas=10, mciter=10, nproc=1,
                  verbose=False):
         self.mciter, self.nreplicas = mciter, nreplicas
         self.nproc, self.verbose = nproc, verbose
-        self.pot = NSPotential(lsPotential, scale=scale)
+        self.pot = nsPotential
         mcrunner = MonteCarloWalker(self.pot, takestep=takeStep,
                                     accept_test=acceptTest, mciter=self.mciter)
         replicas = self.initialise_replicas()

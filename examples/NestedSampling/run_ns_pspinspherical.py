@@ -1,10 +1,9 @@
 from __future__ import division
 import tensorflow as tf
 import argparse
-from learnscapes.NestedSampling import NestedSampling
-from learnscapes.pspinspherical import MeanFieldPSpinSphericalTF
+from learnscapes.NestedSampling import NSPotentialPSS, NestedSampling
+import numpy as np
 
-# THIS REQUIRES A CUSTOM NESTED SAMPLING CLASS THAT IS NOT IMPLEMENTED YET
 
 def main():
     parser = argparse.ArgumentParser(description="do nested sampling on the pspin glass model")
@@ -12,7 +11,7 @@ def main():
     parser.add_argument("p", type=int, help="p-spin")
     parser.add_argument("nspins", type=int, help="number of spins")
     parser.add_argument("--dtype", type=str, help="data type (recommended float64)", default='float64')
-    parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='cpu')
+    parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='gpu')
     # nested sampling variables
     parser.add_argument("-K", "--nreplicas", type=int, help="number of replicas", default=300)
     parser.add_argument("-N", "--mciter", type=int, help="number of Monte Carlo steps for each Markov Chain",
@@ -40,10 +39,14 @@ def main():
     norm = tf.random_normal([nspins for _ in xrange(p)], mean=0, stddev=1.0, dtype=dtype)
     interactions = norm.eval(session=tf.Session())
 
-    pot = MeanFieldPSpinSphericalTF(interactions, nspins, p, dtype=dtype, device=device)
-    # implementing nested sampling for the psping spherical model requires normalizing each step
-    # I need to this this
-    # ns = NestedSampling(pot, scale=scale, nreplicas=nreplicas, mciter=mciter, nproc=nproc, verbose=verbose)
+    ns = NestedSampling(NSPotentialPSS(interactions, nspins, p, dtype=dtype, device=device),
+                        nreplicas=nreplicas,
+                        mciter=mciter,
+                        nproc=nproc,
+                        verbose=verbose)
+
+    # now actually run the computattion
+    ns.run(label=label, etol=etol, maxiter=None, iprint_replicas=1000)
 
 if __name__ == "__main__":
     main()

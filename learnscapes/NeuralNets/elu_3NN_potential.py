@@ -150,7 +150,6 @@ class Elu3NNPotential(BasePotential):
         return e, self.tf_to_pele(grad_w_h, grad_w_h2, grad_w_o,
                                   grad_b_h, grad_b_h2, grad_b_o)
 
-
     def test_model(self, coords, x_test, y_test):
         w_h, w_h2, w_o, b_h, b_h2, b_o = self.pele_to_tf(coords)
         prediction = self.session.run([self.tf_graph.gpredict],

@@ -1,7 +1,7 @@
 from __future__ import division
 import argparse
 from tensorflow.examples.tutorials.mnist import input_data
-from learnscapes.NestedSampling import NestedSampling
+from learnscapes.NestedSampling import NSPotentialNN, NestedSampling
 from learnscapes.NeuralNets import Elu3NNPotential
 
 def main():
@@ -50,9 +50,14 @@ def main():
     teX, teY = data.test.images, data.test.labels
 
     pot = Elu3NNPotential(trX, trY, hnodes, hnodes2, reg=reg, dtype=dtype, device=device)
-    ns = NestedSampling(pot, scale=scale, nreplicas=nreplicas, mciter=mciter, nproc=nproc, verbose=verbose)
+    ns = NestedSampling(NSPotentialNN(pot, scale=scale),
+                        scale=scale,
+                        nreplicas=nreplicas,
+                        mciter=mciter,
+                        nproc=nproc,
+                        verbose=verbose)
 
-    #now actually run the computattion
+    # now actually run the computattion
     ns.run(label=label, etol=etol, maxiter=None, iprint_replicas=1000)
     lowest_replica = ns.ns.replicas[-1]
     print pot.test_model(lowest_replica.x, teX, teY)
