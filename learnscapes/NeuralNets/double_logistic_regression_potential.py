@@ -5,7 +5,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 from pele.potentials import BasePotential
 from pele.optimize._quench import lbfgs_cpp
 from learnscapes.NeuralNets import BaseMLGraph
-from learnscapes.utils import select_device_simple
+from learnscapes.utils import select_device_simple, l2_loss
 
 
 class DoubleLogisticRegressionGraph(BaseMLGraph):
@@ -59,7 +59,7 @@ class DoubleLogisticRegressionGraph(BaseMLGraph):
 
     @property
     def regularization(self):
-        return tf.mul(self.reg, tf.add_n([tf.nn.l2_loss(self.w_h), tf.nn.l2_loss(self.w_o)]))
+        return tf.mul(self.reg, tf.add_n([l2_loss(self.w_h), l2_loss(self.w_o)]))
 
     @property
     def compute_gradient(self):
