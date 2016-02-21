@@ -211,7 +211,7 @@ def main():
 
     import time
     start = time.time()
-    for _ in xrange(2000):
+    for _ in xrange(10000):
         e, grad = potTF.getEnergyGradient(weights)
     end = time.time()
     print "time", end - start
