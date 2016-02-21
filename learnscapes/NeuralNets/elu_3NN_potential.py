@@ -37,9 +37,10 @@ class Elu3NNGraph(BaseMLGraph):
             self.x = tf.Variable(self.x_init, trainable=False, collections=[], name='x_training_data')
             self.y = tf.Variable(self.y_init, trainable=False, collections=[], name='y_training_data')
             self.reg = tf.Variable(self.reg_init, trainable=False, collections=[], name='reg')
-        with self.g.name_scope('embedding'):
+        with self.g.name_scope('test_input'):
             self.x_test = tf.placeholder(self.dtype, shape=(None, self.shape[0]), name='x_test_data')
             self.y_test = tf.placeholder(self.dtype, shape=(None, self.shape[1]), name='y_test_data')
+        with self.g.name_scope('embedding'):
             self.w_h = tf.Variable(tf.zeros((self.shape[0], self.hnodes), dtype=self.dtype), name='hidden_layer_weights')
             self.w_h2 = tf.Variable(tf.zeros((self.hnodes, self.hnodes2), dtype=self.dtype), name='hidden_layer_weights2')
             self.w_o = tf.Variable(tf.zeros((self.hnodes2, self.shape[1]), dtype=self.dtype), name='output_layer_weights')
