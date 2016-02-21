@@ -2,6 +2,10 @@ from __future__ import division
 import numpy as np
 import tensorflow as tf
 
+def ls_reduce_mean(tensor):
+    den = tf.cast(tf.size(tensor), tensor.dtype)
+    return tf.truediv(tf.reduce_sum(tensor), den)
+
 class BaseMLGraph(object):
     """
     this should not have its own graph or its own section, it defines only the graph
@@ -27,7 +31,7 @@ class BaseMLGraph(object):
         """this mutliplies times the interaction and reduces sum reduces the tensor
             compute mean cross entropy (softmax is applied internally)
         """
-        return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.model, self.y))
+        return ls_reduce_mean(tf.nn.softmax_cross_entropy_with_logits(self.model, self.y))
 
     @property
     def regularised_loss(self):
