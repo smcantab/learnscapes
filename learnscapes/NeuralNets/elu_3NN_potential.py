@@ -30,10 +30,14 @@ class Elu3NNGraph(BaseMLGraph):
         :return:
         """
         self.g = graph
+        with self.g.name_scope('input'):
+            self.x_init = tf.placeholder(dtype=self.dtype, shape=self.py_x.shape, name='x_training_data_init')
+            self.y_init = tf.placeholder(dtype=self.dtype, shape=self.py_y.shape, name='y_training_data_init')
+            self.reg_init = tf.placeholder(dtype=self.dtype, shape=(), name='reg_init')
+            self.x = tf.Variable(self.x_init, trainable=False, collections=[], name='x_training_data')
+            self.y = tf.Variable(self.y_init, trainable=False, collections=[], name='y_training_data')
+            self.reg = tf.Variable(self.reg_init, trainable=False, collections=[], name='reg')
         with self.g.name_scope('embedding'):
-            self.x = tf.Variable(tf.constant(self.py_x, dtype=self.dtype, name='x_training_data'))
-            self.y = tf.Variable(tf.constant(self.py_y, dtype=self.dtype, name='y_training_data'))
-            self.reg = tf.Variable(tf.constant(self.pyreg, dtype=self.dtype))
             self.x_test = tf.placeholder(self.dtype, shape=(None, self.shape[0]), name='x_test_data')
             self.y_test = tf.placeholder(self.dtype, shape=(None, self.shape[1]), name='y_test_data')
             self.w_h = tf.Variable(tf.zeros((self.shape[0], self.hnodes), dtype=self.dtype), name='hidden_layer_weights')
@@ -93,7 +97,10 @@ class Elu3NNPotential(BasePotential):
                                             hnodes2, reg=reg, dtype=dtype)(graph=self.g)
                 init = tf.initialize_all_variables()
                 self.session.run(init)
-                self.g.finalize()   # this guarantees that no new ops are added to the graph
+                self.session.run(self.tf_graph.x.initializer, feed_dict={self.tf_graph.x_init:x_train_data})
+                self.session.run(self.tf_graph.y.initializer, feed_dict={self.tf_graph.y_init:y_train_data})
+                self.session.run(self.tf_graph.reg.initializer, feed_dict={self.tf_graph.reg_init:reg})
+                self.g.finalize() # this guarantees that no new ops are added to the graph
         self.ndim = self.tf_graph.ndim
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -181,7 +188,7 @@ def main():
         return np.random.normal(0, scale=1, size=shape).flatten()
 
     dtype = 'float32'
-    device = 'gpu'
+    device = 'cpu'
 
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     bs = 100

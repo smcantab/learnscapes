@@ -50,6 +50,9 @@ class Elu2NNPotential(DoubleLogisticRegressionPotential):
                                             hnodes, reg=reg, dtype=dtype)(graph=self.g)
                 init = tf.initialize_all_variables()
                 self.session.run(init)
+                self.session.run(self.tf_graph.x.initializer, feed_dict={self.tf_graph.x_init:x_train_data})
+                self.session.run(self.tf_graph.y.initializer, feed_dict={self.tf_graph.y_init:y_train_data})
+                self.session.run(self.tf_graph.reg.initializer, feed_dict={self.tf_graph.reg_init:reg})
                 self.g.finalize()   # this guarantees that no new ops are added to the graph
         self.ndim = self.tf_graph.ndim
 

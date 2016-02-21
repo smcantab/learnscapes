@@ -42,9 +42,14 @@ class BasePSpinGraph(object):
         :return:
         """
         self.g = graph
+        with self.g.name_scope('input'):
+            self.prf_init = tf.placeholder(dtype=self.dtype, shape=(), name='pot_prf_init')
+            self.interactions_init = tf.placeholder(dtype=self.dtype, shape=self.pyinteractions.shape,
+                                                    name='pot_interactions_init')
         with self.g.name_scope('embedding'):
-            self.prf = tf.Variable(tf.constant(self.pyprf, dtype=self.dtype, name='pot_prf'))
-            self.interactions = tf.Variable(tf.constant(self.pyinteractions, dtype=self.dtype, name='pot_interactions'))
+            self.prf = tf.Variable(self.prf_init, trainable=False, collections=[], name='pot_prf')
+            self.interactions = tf.Variable(self.interactions_init, trainable=False, collections=[],
+                                            name='pot_interactions')
             self.x = tf.Variable(tf.zeros([self.nspins], dtype=self.dtype), name='x')
         # declaring loss like this makes sure that the full graph is initialised
         with self.g.name_scope('loss'):
@@ -122,9 +127,12 @@ class MeanFieldPSpinSphericalTF(BasePotential):
                     allow_soft_placement=True,
                     log_device_placement=True))
             with self.session.as_default():
-                self.model = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype)(graph=self.g)
+                self.tf_graph = MeanFieldPSpinGraph(interactions, nspins, p, dtype=dtype)(graph=self.g)
                 init = tf.initialize_all_variables()
                 self.session.run(init)
+                self.session.run(self.tf_graph.prf.initializer, feed_dict={self.tf_graph.prf_init:self.tf_graph.pyprf})
+                self.session.run(self.tf_graph.interactions.initializer,
+                                 feed_dict={self.tf_graph.interactions_init:interactions})
                 self.g.finalize()   # this guarantees that no new ops are added to the graph
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -137,15 +145,15 @@ class MeanFieldPSpinSphericalTF(BasePotential):
         self._normalizeSpins(coords)
         with self.g.as_default(), self.g.device(self.device):
             with self.session.as_default():
-                e = self.session.run(self.model.gloss, feed_dict={self.model.x: coords})
+                e = self.session.run(self.tf_graph.gloss, feed_dict={self.tf_graph.x: coords})
         return e
 
     def getEnergyGradient(self, coords):
         self._normalizeSpins(coords)
         with self.g.as_default(), self.g.device(self.device):
             with self.session.as_default():
-                e, grad = self.session.run([self.model.gloss, self.model.gcompute_gradient],
-                                           feed_dict={self.model.x: coords})
+                e, grad = self.session.run([self.tf_graph.gloss, self.tf_graph.gcompute_gradient],
+                                           feed_dict={self.tf_graph.x: coords})
         return e, grad
 
 if __name__ == "__main__":
@@ -176,8 +184,8 @@ if __name__ == "__main__":
     print 'e:{0:.15f}, norm(g):{0:.15f}'.format(e), np.linalg.norm(grad)
 
 
-    # model = MeanFieldPSpinGraph(interactions, n, p, dtype=dtype)
-    # gd = GradientDescent(model, learning_rate=1, iprint=1, device='cpu')
+    # tf_graph = MeanFieldPSpinGraph(interactions, n, p, dtype=dtype)
+    # gd = GradientDescent(tf_graph, learning_rate=1, iprint=1, device='cpu')
     # gd.run(coords)
     # print gd.get_results()
 
@@ -188,6 +196,6 @@ if __name__ == "__main__":
     #     print time.time() - start
     # print timeit.timeit('e, grad = potTF.getEnergyGradient(coords)', "from __main__ import potTF, coords", number=10)
 
-    # print minimize(potTF, coords)
+    print minimize(potTF, coords)
     #
     # print timeit.timeit('minimize(potTF, coords)', "from __main__ import potTF, coords, minimize", number=10)
