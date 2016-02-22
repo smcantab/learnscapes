@@ -17,6 +17,7 @@ def main():
     parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='cpu')
     # operations to perform
     parser.add_argument("--bh", type=int, help="number of basin hopping steps to perform", default=0)
+    parser.add_argument("--refine", action='store_true', help="refine database")
     parser.add_argument("--connect", action="store_true", help="run all")
     parser.add_argument("--connect-method", type=str, help="method used to connect", default='random')
 
@@ -31,6 +32,7 @@ def main():
     #operations
     bh_niter = args.bh
     connect, connect_method = args.connect, args.connect_method
+    refine = args.refine
 
     if model == 'mnist':
         from tensorflow.examples.tutorials.mnist import input_data
@@ -45,11 +47,13 @@ def main():
     system = create_system(trX, trY, hnodes, hnodes2, reg=reg, scale=scale, dtype=dtype, device=device)
     db = system.create_database("{}_{}_h{}_h2{}_p{}_r{}.sqlite".format(system.name, model, hnodes, hnodes2, ntrain, reg))
 
-    #now actually run the computattion
+    #now actually run the computation
     fname = None
     if bh_niter > 0:
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(bh_niter)
+
+    if refine:
         print "\n refining database \n"
         rtol = 1e-8 if dtype == 'float32' else 1e-10
         refine_database(system, db, tol=rtol, nsteps=int(2.5e4), maxstep=1, iprint=1000)

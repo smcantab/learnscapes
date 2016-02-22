@@ -12,6 +12,7 @@ def main():
     parser.add_argument("--device", type=str, help="device on which TensorFlow should run", default='cpu')
     # operations to perform
     parser.add_argument("--bh", type=int, help="number of basin hopping steps to perform", default=0)
+    parser.add_argument("--refine", action='store_true', help="refine database")
     parser.add_argument("--connect", action="store_true", help="run all")
     parser.add_argument("--connect-method", type=str, help="method used to connect", default='random')
 
@@ -24,6 +25,7 @@ def main():
     #operations
     bh_niter = args.bh
     connect, connect_method = args.connect, args.connect_method
+    refine = args.refine
     dbname = "pspin_spherical_p{}_N{}.sqlite".format(p,nspins)
     try:
         db, interactions = get_database_params_server(dbname, nspins, p)
@@ -37,13 +39,16 @@ def main():
     if db is None:
         db = system.create_database(dbname)
 
-    #now actually run the computattion
+    #now actually run the computation
     fname = None
     if bh_niter > 0:
         bh = system.get_basinhopping(database=db, outstream=None)
         bh.run(bh_niter)
+
+    if refine:
         print "\n refining database \n"
         refine_database(system, db, tol=1e-10, nsteps=int(2.5e4), maxstep=1, iprint=1000)
+
     if connect:
         fname = "pspin_spherical_p{}_N{}.dg.pdf".format(p,nspins)
         run_double_ended_connect(system, db, strategy=connect_method)
