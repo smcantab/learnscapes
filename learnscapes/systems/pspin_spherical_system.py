@@ -75,7 +75,7 @@ class UniformPSpinSPhericalRandomDisplacement(TakestepSlice):
 
 
 class MeanFieldPSpinSphericalSystem(BaseSystem):
-    def __init__(self, nspins, p=3, interactions=None, dtype='float32', device='cpu'):
+    def __init__(self, nspins, p=3, interactions=None, dtype='float64', device='cpu'):
         BaseSystem.__init__(self)
         self.nspins = nspins
         self.p = p
@@ -89,8 +89,8 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
     def setup_params(self, params):
         params.takestep.verbose = True
         nebparams = params.double_ended_connect.local_connect_params.NEBparams
-        nebparams.image_density = 0.8
-        nebparams.iter_density = 50.
+        # nebparams.image_density = 0.8
+        # nebparams.iter_density = 50.
         nebparams.reinterpolate = 50
         nebparams.adaptive_nimages = True
         nebparams.adaptive_niter = True
@@ -135,13 +135,13 @@ class MeanFieldPSpinSphericalSystem(BaseSystem):
         pele.optimize
         """
         def event_normalize_spins(**kwargs):
-             kwargs["coords"] = normalize_spins(kwargs["coords"])
+            kwargs["coords"] = normalize_spins(kwargs["coords"])
         pot = self.get_potential()
         kwargs = dict_copy_update(self.params["structural_quench_params"], kwargs)
         kwargs = dict_copy_update(dict(events=[event_normalize_spins]), kwargs)
         return lambda coords: lbfgs_cpp(coords, pot, **kwargs)
 
-    def get_potential(self, dtype='float32', device='cpu'):
+    def get_potential(self, dtype='float64', device='cpu'):
         try:
             return self.pot
         except AttributeError:
