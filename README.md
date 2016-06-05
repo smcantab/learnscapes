@@ -1,4 +1,4 @@
-**learnscapes** : Learning Representation through Energy Landscapes
+**learnscapes**
 =====================================================================
 
 Tools for the analysis of machine learning from an energy landscape perspective.
