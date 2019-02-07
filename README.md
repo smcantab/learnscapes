@@ -1,4 +1,4 @@
 **learnscapes**
 =====================================================================
 
-Tools for the analysis of machine learning from an energy landscape perspective.
+Tools for the analysis of deep learning from an energy landscape perspective.
